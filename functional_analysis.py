@@ -112,11 +112,11 @@ class AnalysisCentral(TableFeatures):
         resultstr = []
         for C in self.network.CpdList:
             for x in C.hitlist:
-                resultstr.append([x[0], C.id, x[1], x[2], C.name] + [
+                resultstr.append([x[0].mz, x[0].retention_time, C.id, x[1], x[2], C.name] + [
                                         '$'.join(self.network.MetabolicModel.cpd2pathways.get(C.id, []))])
         
         resultstr.sort()
-        data2write = [ ['m/z', 'id', 'match_form', 'mz_difference', 'name', 'pathway']
+        data2write = [ ['m/z', 'rt', 'id', 'match_form', 'mz_difference', 'name', 'pathway']
                      ] + resultstr
         outfile = os.path.join(self.csvdir, "_tentative_featurematch_"
                                ) + self.network.paradict['output']
@@ -150,7 +150,7 @@ class AnalysisCentral(TableFeatures):
             used_input_mzstr = []
             for n in nodes:
                 used_input_mzstr.append([str(x[0]) for x in self.network.cpd_dict[n].hitlist 
-                                                    if x[0] in self.network.input_mzlist])
+                                                    if x[0] in self.network.input_featurelist])
                 
             names = [ self.network.MetabolicModel.dict_cpds_def.get(x, '') for x in nodes ]
             resultstr.append([str(x) for x in [P.name, P.overlap_size, P.cpd_num, 
@@ -159,12 +159,12 @@ class AnalysisCentral(TableFeatures):
 
         resultstr.append([])
         resultstr.append(['Annotation for metabolites in significant pathways'])
-        resultstr.append(['m/z', 'id', 'match_form', 'mz_difference', 'name', 'pathway'])
+        resultstr.append(['m/z', 'rt', 'id', 'match_form', 'mz_difference', 'name', 'pathway'])
         usenodes = set(usenodes)
         for C in self.network.CpdList:
             if C.id in usenodes:
                 for x in C.hitlist:
-                    resultstr.append( [x[0], C.id, x[1], x[2], C.name] + [
+                    resultstr.append( [x[0].mz, x[0].retention_time, C.id, x[1], x[2], C.name] + [
                                             '$'.join( self.network.MetabolicModel.cpd2pathways.get(C.id, []) )] )
         
         
@@ -246,13 +246,13 @@ class AnalysisCentral(TableFeatures):
         
         resultstr.append([])
         resultstr.append(['Annotation for metabolites in above modules'])
-        resultstr.append(['m/z', 'id', 'match_form', 'mz_difference', 
+        resultstr.append(['m/z', 'rt', 'id', 'match_form', 'mz_difference', 
                           'name', 'pathway'])
         allnodes = set(allnodes)
         for C in self.network.CpdList:
             if C.id in allnodes:
                 for x in C.hitlist:
-                    resultstr.append( [x[0], C.id, x[1], x[2], C.name] + [
+                    resultstr.append( [x[0].mz, x[0].retention_time, C.id, x[1], x[2], C.name] + [
                                             '$'.join( self.network.MetabolicModel.cpd2pathways.get(C.id, []) )] )
         
         outfile = os.path.join(self.csvdir, "mcg_modularanalysis_") + self.network.paradict['output']
@@ -418,18 +418,19 @@ class AnalysisCentral(TableFeatures):
         output a table to work on testable metabolites.
         '''
         
-        resultstr = [['Compound_ID', 'name', 'input_mz', 'match_form', 'mz_difference', 'in_pathways', 
+        resultstr = [['Compound_ID', 'name', 'input_mz', 'rt', 'match_form', 'mz_difference', 'in_pathways', 
                       'evidence_score', 'MW', 'all_possibles',],
                     ]
         for M in self.mwstr2mnodes.values():
             for x in M.cpd.hitlist:
                 if M.chosen:
                     resultstr.append([M.chosen, self.network.MetabolicModel.dict_cpds_def.get(M.chosen, '').split(";")[0], 
-                                      ] + list(x) + 
+                                      #] + list(x) + 
+                                      ] + [x[0].mz,x[0].retention_time,x[1],x[2]] + 
                                       ['$'.join(self.network.MetabolicModel.cpd2pathways.get(M.chosen, [])), 
                                        M.evidence_score, M.mwstr, "among possibles %s" %M.id])
                 else:
-                    resultstr.append([M.id, M.cpd.name] + list(x) + 
+                    resultstr.append([M.id, M.cpd.name] + [x[0].mz,x[0].retention_time,x[1],x[2]] +
                                       ['$'.join(self.network.MetabolicModel.cpd2pathways.get(M.id, [])),
                                       M.evidence_score, M.mwstr,])
             
@@ -596,7 +597,7 @@ class AnalysisCentral(TableFeatures):
                             ) + '</td><td>' + M.mwstr + '</td><td> </td></tr>'
                 
             for x in M.cpd.hitlist:
-                s += '<tr> <td> </td> <td>%f</td><td>%s</td><td>%f</td><td> </td></tr>' %x
+                s += '<tr> <td> </td> <td>%f</td><td>%s</td><td>%f</td><td> </td></tr>' %(x[0].mz, x[1], x[2])
             
         return s + '</table>'
                 
@@ -627,8 +628,8 @@ class PathwayAnalysis:
         self.paradict = TF.network.paradict
         
         self.pathways = self.get_pathways(pathways)
-        self.ref_mzlist = TF.network.ref_mzlist
-        self.input_mzlist = TF.input_mzlist
+        self.ref_featurelist = TF.network.ref_featurelist
+        self.input_featurelist = TF.input_featurelist
         self.input_cpdlist = TF.input_cpdlist
         
         print_and_loginfo("\nPathway Analysis...")
@@ -656,11 +657,11 @@ class PathwayAnalysis:
         print_and_loginfo("Resampling, %d permutations to estimate background ..." 
                           %num_perm)
         
-        N = len(self.input_mzlist)
+        N = len(self.input_featurelist)
         for ii in range(num_perm):
             sys.stdout.write( ' ' + str(ii + 1))
             sys.stdout.flush()
-            TFX = TableFeatures(self.network, random.sample(self.ref_mzlist, N))
+            TFX = TableFeatures(self.network, random.sample(self.ref_featurelist, N))
             self.permutation_record += (self.calculate_permutation_value(TFX, pathways))
 
         # now do Gamma fit
@@ -804,8 +805,8 @@ class ModularAnalysis:
         self.network = TF.network
         self.paradict = TF.network.paradict
         
-        self.input_mzlist = self.tf.input_mzlist
-        self.ref_mzlist = self.network.ref_mzlist
+        self.input_featurelist = self.tf.input_featurelist
+        self.ref_featurelist = self.network.ref_featurelist
         self.seed_cpds = self.tf.input_cpdlist
         
         self.modules_from_input = []
@@ -929,11 +930,11 @@ class ModularAnalysis:
         Run num_perm permutations on mzlist;
         populate activity scores in self.permuation_mscores
         '''
-        N = len(self.input_mzlist)
+        N = len(self.input_featurelist)
         for ii in range(num_perm):
             sys.stdout.write( ' ' + str(ii+1))
             sys.stdout.flush()
-            self.run_analysis(random.sample(self.ref_mzlist, N))
+            self.run_analysis(random.sample(self.ref_featurelist, N))
 
     def rank_significance(self):
         '''
@@ -1070,8 +1071,12 @@ class NetworkInspector:
         # to fix
         # EmpiricalCompound is initiated right at reading input data, not be initiatd here
         #
-        all_mnodes = [EmpiricalCompound(self.network.cpd_dict[c]) for c in self.cpds]
+        all_mnodes = [] # [EmpiricalCompound(self.network.cpd_dict[c].id,self.network.cpd_dict[c].mw) for c in self.cpds]
         
+        for ec in self.network.ecs:
+            if ec.id in self.cpds:
+                all_mnodes.append(ec)
+
         for M in all_mnodes:
             if M.evidence_score >= self.paradict['evidence']:
                 if not self.paradict['force_primary_ion'] or (

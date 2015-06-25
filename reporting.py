@@ -122,6 +122,7 @@ class HtmlExport:
         The visualization can get a lot more complicated. Using only names for cytoscape.js for now. 
         When implementing other features, both id and name will be needed.
         '''
+
         cpdcolordict = self.rescale_color(dict_cpd_foldchange)
         
         nodestr, edgestr, cynodestr, cyedgestr = '', '', '', ''
@@ -222,15 +223,14 @@ def makedict_cpd_foldchange(TF):
         else: return L[-1]
         
     mydict = {}
-    
     for c in TF.input_cpdlist:
-        mzlist = set([x[0] for x in TF.network.cpd_dict[c].hitlist 
-                        if x[0] in TF.network.input_mzlist])
+        mzlist = set([x[0].row_number for x in TF.network.cpd_dict[c].hitlist 
+                        if x[0].row_number in TF.network.input_featurelist])
         if len(mzlist) > 1:
             logging.info("    - multiple match - " + c + ' - ' + ', '.join([str(x) for x in mzlist]))
-            mydict[c] = max_fold_change([TF.network.input_mzfcdict[x] for x in mzlist])
+            mydict[c] = max_fold_change([TF.network.input_featurefcdict[x] for x in mzlist])
         else:
-            mydict[c] = TF.network.input_mzfcdict[mzlist.pop()]
+            mydict[c] = TF.network.input_featurefcdict[mzlist.pop()]
     
     return mydict
 

@@ -208,7 +208,7 @@ if __name__ == '__main__':
     
     # if not optdict['targeted']:
     # Untargeted analysis
-    AC = AnalysisCentral(HNET, HNET.input_mzlist)
+    AC = AnalysisCentral(HNET, HNET.input_featurelist)
     AC.create_dirs()
     AC.run_all_analysis()
     AC.export_csv_data()

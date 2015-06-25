@@ -91,9 +91,9 @@ class Compound(object):
         '''
         for x in self.mzlist:
             diff = mass_feature.mz - x[0]
-            if abs(diff) < tolerance:
+            if abs(diff) < mz_tolerance:
                 #self.hitlist.append( (mz, x[1], round(diff, 4), rtime) )
-                self.hitlist.append( (mass_feature, x[1], round(diff, 4)) )
+                self.hitlist.append( (mass_feature, x[1], round(diff, 4)))
                 
     def split(self, rtime_tolerance = 60):
         '''
@@ -108,7 +108,11 @@ class Compound(object):
         
         
         # return [EmoiricalCompound instances, ...]
-        return []
+        ec=EmpiricalCompound(self, self.id, self.mw)
+        for h in self.hitlist:
+            ec.hitlist.append(h)
+        ec.evaluate()
+        return [ec]
         
         
         
@@ -142,14 +146,14 @@ class EmpiricalCompound:
     3. if cpds use same m/z values, choose cpd with stronger evidence from 2.
        if not resolved, use cpd with greatest degree in inspected network
     '''
-    def __init__(self, cpd_id, cpd_mw):
+    def __init__(self, CPD, cpd_id, cpd_mw):
         '''
         
         
         
         '''
-        #self.cpd = CPD
-        self.id = self.cpd_id
+        self.cpd = CPD
+        self.id = cpd_id
         self.mwstr = str(round(cpd_mw, 4))
         self.hitlist = []                   # [( MassFeature instance, match form, diff), ...]
         
@@ -171,7 +175,6 @@ class EmpiricalCompound:
         matchforms = set([x[1] for x in self.hitlist])
         if 'M+H[1+]' in matchforms or 'M-H[-]' in matchforms:
             self.primary_ion_present = True
-            
         for x in matchforms: 
             self.evidence_score += dict_weight_adduct[x]
         
@@ -284,13 +287,14 @@ class HsaNetwork:
         self.cpd_dict = {}                  # id to Compound
         self.build_cpdindex(paradict['mode'])
                                             # to make CpdList and CpdTree
-        self.input_mzlist = []
-        self.ref_mzlist = []
-        self.input_mzfcdict = {}            # fc can be any statistic from input file
+        self.input_featurelist = []
+        self.ref_featurelist = []
+        self.input_featurefcdict = {}            # fc can be any statistic from input file
         self.read()
         
         self.total_matched_cpds = []
         self.match_dict = {}                # mz to List of Compounds
+        self.ecs=[]
         
         #
         # from ver 1 to ver 2, major change in .match()
@@ -340,7 +344,7 @@ class HsaNetwork:
         '''
         if self.paradict['cutoff']:
             # use user specified cutoff
-            self.input_mzlist = [x.mz for x in all_feature_list if x.p_value < self.paradict['cutoff']]
+            self.input_featurelist = [x.row_number for x in all_feature_list if x.p_value < self.paradict['cutoff']]
         else:
             # automated cutoff
             new = [(x.p_value, x) for x in all_feature_list]
@@ -369,7 +373,7 @@ class HsaNetwork:
                 N_chosen = N_hotspots[chosen]
                 print_and_loginfo("Using %d features (p < %f) as significant list." %(N_chosen, p_hotspots[chosen]))
         
-            self.input_mzlist = [x[1].mz for x in new[:N_chosen]]
+            self.input_featurelist = [x[1].row_number for x in new[:N_chosen]]
         
 
 
@@ -460,8 +464,8 @@ class HsaNetwork:
             self.determine_significant_list( all_feature_list )
             
             for x in all_feature_list:
-                self.ref_mzlist.append( x.mz )
-                self.input_mzfcdict[ x.mz ] = x.statistic
+                self.ref_featurelist.append( x.row_number )
+                self.input_featurefcdict[ x.row_number ] = x.statistic
             
         # if targeted, use CompoundID_from_user as primary ID
         # only supports KEGG style ID for now, as in mfn_default model
@@ -473,13 +477,13 @@ class HsaNetwork:
         #
         else:
             all_feature_list = [x for x in all_feature_list if x.CompoundID_from_user]
-            self.input_mzlist = [x.CompoundID_from_user for x in all_feature_list 
+            self.input_featurelist = [x.CompoundID_from_user for x in all_feature_list 
                         if x.p_value < self.paradict['cutoff']]
-            self.ref_mzlist = [x.CompoundID_from_user for x in all_feature_list]
-            for x in all_feature_list: self.input_mzfcdict[ x.CompoundID_from_user ] = x.statistic
+            self.ref_featurelist = [x.CompoundID_from_user for x in all_feature_list]
+            for x in all_feature_list: self.input_featurefcdict[ x.CompoundID_from_user ] = x.statistic
             
         # will phase out when primary ID changes to row_number
-        self.input_mzlist, self.ref_mzlist = set(self.input_mzlist), set(self.ref_mzlist)
+        self.input_featurelist, self.ref_featurelist = set(self.input_featurelist), set(self.ref_featurelist)
         self.all_feature_list = all_feature_list
         
 
@@ -499,7 +503,7 @@ class HsaNetwork:
         
         '''
         for x in self.all_feature_list:
-            self.match_dict[x.mz] = []
+            self.match_dict[x.row_number] = []
             mztol = mz_tolerance(x.mz, self.paradict['mode'])
             floor = int(x.mz)
             for ii in [floor-1, floor, floor+1]:
@@ -511,8 +515,9 @@ class HsaNetwork:
             split_EmpiricalCompounds = C.split()
             
             for CC in split_EmpiricalCompounds:
+                self.ecs.append(CC)
                 for x in CC.hitlist:
-                    self.match_dict[x].append(CC)            # mz to EmpiricalCompound
+                    self.match_dict[x[0].row_number].append(CC)            # mz to EmpiricalCompound
                     self.total_matched_cpds.append(CC.id)
             
             
@@ -654,7 +659,7 @@ class TableFeatures:
     
     
     '''
-    def __init__(self, hsanet, input_mzlist):
+    def __init__(self, hsanet, input_featurelist):
         '''
         Hookup to reference network, input parameters.
         self.significant_cpdlist keeps track of cpds that bring significance 
@@ -662,12 +667,12 @@ class TableFeatures:
         
         '''
         self.network = hsanet
-        self.input_mzlist = set(input_mzlist)
+        self.input_featurelist = set(input_featurelist)
         self.input_cpdlist = []
         self.make_cpdlist()
         
     def make_cpdlist(self):
-        for x in self.input_mzlist:
+        for x in self.input_featurelist:
             # get matched Compound/EmpiricalCompound instances from network.match_dict
             self.input_cpdlist += [C.id for C in 
                         self.network.match_dict.get(x, []) if C.id not in currency]
@@ -681,8 +686,8 @@ class TableFeatures:
         cpdlist from matched only.
         '''
         result = []
-        for c in cpdlist: result += [x[0] for x in self.network.cpd_dict[c].hitlist]
-        return len(set(result).intersection(self.input_mzlist))
+        for c in cpdlist: result += [x[0].row_number for x in self.network.cpd_dict[c].hitlist]
+        return len(set(result).intersection(self.input_featurelist))
 
 
 
