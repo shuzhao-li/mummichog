@@ -669,7 +669,6 @@ class PathwayAnalysis:
                           %len(self.permutation_record))
         self.gamma = stats.gamma.fit(1-np.array(self.permutation_record))
 
-
     def calculate_permutation_value(self, TFX, pathways):
         '''
         For each permutated TFX instance,
@@ -678,7 +677,12 @@ class PathwayAnalysis:
         p_of_pathways = [ ]
         query_set_size = len(TFX.input_cpdlist)
         for P in pathways:
-            overlap_features = TFX.input_cpdlist.intersection(P.cpds)
+            ecpds=[]
+            for c in P.cpds:
+                if self.network.theoretical2empirical.has_key(c):
+                    for ec in self.network.theoretical2empirical[c]:
+                        ecpds.append(ec)
+            overlap_features = TFX.input_cpdlist.intersection(ecpds)
             overlap_size = min(len(overlap_features), 
                                TFX.count_cpd2mz(overlap_features))
             if overlap_size > 0:
@@ -701,10 +705,10 @@ class PathwayAnalysis:
         '''
         self.do_permutations(pathways, self.paradict['permutation'])
         if self.paradict['modeling'] == 'gamma':
-            for P in pathways: P.adjusted_p = self.calculate_gamma_p(P.p_EASE)
+            for P in pathways: 
+                P.adjusted_p = self.calculate_gamma_p(P.p_EASE)
         else:
             for P in pathways: P.adjusted_p = self.calculate_p(P.p_EASE, self.permutation_record)
-            
         return pathways
         
 
@@ -750,27 +754,31 @@ class PathwayAnalysis:
         print_and_loginfo("total_feature_num = %d compounds" %total_feature_num)
         
         for P in self.pathways:
-            P.cpds = total_cpds.intersection(set(P.cpds))
-            P.cpd_num = len(P.cpds)
-            P.overlap_features = qset.intersection(P.cpds)
+            ecpds=[]
+            for c in P.cpds:
+                if self.network.theoretical2empirical.has_key(c):
+                    for ec in self.network.theoretical2empirical[c]:
+                        ecpds.append(ec)
+            ecpds = total_cpds.intersection(set(ecpds))
+            ecpd_num = len(ecpds)
+            P.overlap_features = qset.intersection(ecpds)
             P.overlap_size = overlap_size = min(len(P.overlap_features), 
                                self.tf.count_cpd2mz(P.overlap_features))
             
             # need? if overlap_size > 0
-            negneg = total_feature_num + overlap_size - P.cpd_num - query_set_size
+            negneg = total_feature_num + overlap_size - ecpd_num - query_set_size
             # Fisher's exact test
             P.p_FET = stats.fisher_exact([[overlap_size, query_set_size - overlap_size],
-                                   [P.cpd_num - overlap_size, negneg]], 'greater')[1]
+                                   [ecpd_num - overlap_size, negneg]], 'greater')[1]
             # EASE score as in Hosack et al 2003
             P.p_EASE = stats.fisher_exact([[max(0, overlap_size - 1), query_set_size - overlap_size],
-                                   [P.cpd_num - overlap_size + 1, negneg]], 'greater')[1]
+                                   [ecpd_num - overlap_size + 1, negneg]], 'greater')[1]
             
             FET_tested_pathways.append(P)
             #  (enrich_pvalue, overlap_size, overlap_features, P) 
             
         result = [(P.adjusted_p, P) for P in 
                   self.adjust_p_by_permutations(FET_tested_pathways)]
-        
         result.sort()
         result = [x[1] for x in result]
         self.record_sigpath_cpds(result)
@@ -807,7 +815,10 @@ class ModularAnalysis:
         
         self.input_featurelist = self.tf.input_featurelist
         self.ref_featurelist = self.network.ref_featurelist
-        self.seed_cpds = self.tf.input_cpdlist
+        cpdlist=[]
+        for c in self.tf.input_cpdlist:
+            cpdlist.append(self.tf.network.cpd_dict[c].cpd.id)
+        self.seed_cpds = set(cpdlist)#self.tf.input_cpdlist
         
         self.modules_from_input = []
         self.permuation_mscores = []
@@ -843,7 +854,11 @@ class ModularAnalysis:
         The permutated input list is fuzzy matched via self.network.mz2cpds().
         '''
         TFX = TableFeatures(self.network, input_mzlist)
-        return self.find_modules(TFX.input_cpdlist)
+        cpdlist=[]
+        for c in TFX.input_cpdlist:
+            cpdlist.append(TFX.network.cpd_dict[c].cpd.id)
+
+        return self.find_modules(set(cpdlist))#TFX.input_cpdlist)
 
     def find_modules(self, cpds):
         '''
@@ -855,33 +870,37 @@ class ModularAnalysis:
         '''
         global SEARCH_STEPS
         seeds, modules, modules2, module_nodes_list = cpds, [], [], []
-
+        ecpds=[]
+        for c in cpds:
+            #for ec in self.tf.network.theoretical2empirical[c]:
+            #ecpds.append(ec)
+            ecpds.append(self.tf.network.theoretical2empirical[c][0])
         for ii in range(SEARCH_STEPS):
             edges = nx.edges(self.network.network, seeds)
             if ii == 0:
                 # step 0, counting edges connecting seeds
                 edges = [x for x in edges if x[0] in seeds and x[1] in seeds]
                 new_network = nx.from_edgelist(edges)
-                
+                #print(new_network.number_of_nodes())
             else:
                 # step 1, 2, 3, ... growing to include extra steps/connections
                 new_network = nx.from_edgelist(edges)
                 seeds = new_network.nodes()
-            
+                #print(new_network.number_of_nodes())
             for sub in nx.connected_component_subgraphs(new_network):
                 if 3 < sub.number_of_nodes() < 500:
-                    M = Mmodule(self.network, sub, cpds, self.tf)
-                    modules.append(M)
+                    M = Mmodule(self.network, sub, ecpds, self.tf)
+                    if M.graph.number_of_nodes() > 0:
+                        modules.append(M)
                 
         # add modules split from modules
         if USE_DEBUG:
             logging.info( '# initialized network size = %d' %len(seeds) )
             # need export modules for comparison to heinz
             self.export_debug_modules( modules )
-            
         for sub in modules:
             if sub.graph.number_of_nodes() > 5:
-                modules2 += [Mmodule(self.network, x, cpds, self.tf)
+                modules2 += [Mmodule(self.network, x, ecpds, self.tf)
                              for x in self.split_modules(sub.graph)]
         
         new = []
@@ -890,7 +909,6 @@ class ModularAnalysis:
                 new.append(M)
                 module_nodes_list.append(M.nodestr)
                 if USE_DEBUG: logging.info( str(M.graph.number_of_nodes()) + ', ' + str(M.A) )
-
         return new
 
     def export_debug_modules(self, modules):
@@ -1033,7 +1051,7 @@ class NetworkInspector:
         '''
         self.cpds = set(self.tf.input_cpdlist).intersection(
                                         set(self.network.significant_cpdlist))
-        
+
         self.collect_Mnodes()
         start_nodes = [M.id for M in self.mwstr2mnodes.values() if ',' not in M.id]
         for M in self.mwstr2mnodes.values():
@@ -1072,7 +1090,7 @@ class NetworkInspector:
         # EmpiricalCompound is initiated right at reading input data, not be initiatd here
         #
         all_mnodes = [] # [EmpiricalCompound(self.network.cpd_dict[c].id,self.network.cpd_dict[c].mw) for c in self.cpds]
-        
+
         for ec in self.network.ecs:
             if ec.id in self.cpds:
                 all_mnodes.append(ec)

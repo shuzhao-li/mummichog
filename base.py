@@ -18,7 +18,7 @@ Basic data classes in mummichog
 
 import logging, csv
 import networkx as nx
-
+from operator import itemgetter
 from config import *
 
 
@@ -52,6 +52,7 @@ class Compound(object):
         self.mw = molecular_weight
         self.mzlist = self.make_mzlist(mode=ms_mode)
         self.hitlist = []
+        self.theoretical2empirical={}
         
     def make_mzlist(self, mode='dpj_positive'):
         '''
@@ -105,19 +106,40 @@ class Compound(object):
         
         # to finish
         
+        # return [EmoiricalCompound instances, ...]
+        cnt=0
+        ecs=[EmpiricalCompound(self, self.id+"_rt"+str(cnt), self.mw)]
+
+        sorted(self.hitlist, key = lambda hit : hit[0].retention_time) #   itemgetter(0))
+        for i in range(1,len(self.hitlist)):
+            ecs[len(ecs)-1].hitlist.append(self.hitlist[i-1])
+            if self.hitlist[i][0].retention_time-self.hitlist[i-1][0].retention_time > rtime_tolerance:
+                cnt=cnt+1
+                ecs.append(EmpiricalCompound(self, self.id+"_rt"+str(cnt),self.mw))
+
+        for ec in ecs:
+            ec.evaluate()
+        return ecs
+
+    def split2(self, rtime_tolerance = 60):
+        '''
+        group and split hits by retention time, to EmoiricalCompound instances
         
+        '''
+        all_rtimes = [x[0].retention_time for x in self.hitlist]
+        # now split the hits by retention_time
+        
+        # to finish
         
         # return [EmoiricalCompound instances, ...]
-        ec=EmpiricalCompound(self, self.id, self.mw)
+        cnt=0
+        ecs=[EmpiricalCompound(self, self.id, self.mw)]
         for h in self.hitlist:
-            ec.hitlist.append(h)
-        ec.evaluate()
-        return [ec]
-        
-        
-        
-        
-
+            for ec in ecs:
+                ec.hitlist.append(h)
+        for ec in ecs:
+            ec.evaluate()
+        return ecs
 
 
 class EmpiricalCompound:
@@ -295,7 +317,7 @@ class HsaNetwork:
         self.total_matched_cpds = []
         self.match_dict = {}                # mz to List of Compounds
         self.ecs=[]
-        
+        self.theoretical2empirical={}
         #
         # from ver 1 to ver 2, major change in .match()
         #
@@ -323,7 +345,7 @@ class HsaNetwork:
         for ii in range(49, 2001): CpdTree[ii] = []
             
         for C in CpdList:
-            self.cpd_dict[C.id] = C
+            #self.cpd_dict[C.id] = C
             neighborhood = [int(x[0]) for x in C.mzlist]
             for n in neighborhood:
                 if 50 < n < 2001:
@@ -514,8 +536,12 @@ class HsaNetwork:
             # here to split Compound to EmpiricalCompound
             split_EmpiricalCompounds = C.split()
             
+            self.theoretical2empirical[C.id]=[]
             for CC in split_EmpiricalCompounds:
                 self.ecs.append(CC)
+                self.theoretical2empirical[C.id].append(CC.id)
+
+                self.cpd_dict[CC.id]=CC
                 for x in CC.hitlist:
                     self.match_dict[x[0].row_number].append(CC)            # mz to EmpiricalCompound
                     self.total_matched_cpds.append(CC.id)
@@ -552,7 +578,6 @@ class Mmodule:
         self.num_ref_nodes = hsanet.network.number_of_nodes()
         self.graph = subgraph
         self.shave(seed_cpds)
-        
         self.nodestr = self.make_nodestr()
         self.A = self.activity_score(seed_cpds, TF)
     
@@ -568,11 +593,17 @@ class Mmodule:
         To reduce bias towards larger modules in Q:
         np.sqrt(self.num_ref_nodes/Nm) * 
         '''
-        Ns = [x for x in self.graph.nodes() if x in seed_cpds]
-        Ns = min(len(Ns), TF.count_cpd2mz(Ns))
+        cpdlist=[]
+        for c in seed_cpds:
+            cpdlist.append(TF.network.cpd_dict[c].cpd.id)
+        Ns = [x for x in self.graph.nodes() if x in cpdlist]
+        ens=[]
+        for c in Ns:
+            ens.append(TF.network.theoretical2empirical[c][0])
+        Ns = min(len(ens), TF.count_cpd2mz(ens))
         Nm = float(self.graph.number_of_nodes())
         self.compute_modularity()
-        return np.sqrt(len(TF.input_cpdlist)/Nm) *self.Q * (Ns/Nm)
+        return np.sqrt(len(TF.input_cpdlist)/Nm) *self.Q * (Ns/Nm) if Nm>0 else 0
         
         
     def compute_modularity(self):
