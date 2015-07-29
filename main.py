@@ -43,6 +43,7 @@ import time, getopt, logging
 from config import *
 
 def cli_options(opts):
+    time_stamp = str(time.time())
     optdict = {'analysis': 'total',
                'cutoff': 0,
                'targeted': False,
@@ -59,7 +60,7 @@ def cli_options(opts):
                'infile': '',
                'output': '',
                'permutation': 100,
-               'outdir': 'mcgresult',
+               'outdir': 'mcgresult' + time_stamp,
                }
     booleandict = {'T': True, 'F': False, 1: True, 0: False, 
                    'True': True, 'False': False, 'TRUE': True, 'FALSE': False, 'true': True, 'false': False,
@@ -82,7 +83,7 @@ def cli_options(opts):
         elif o in ("-f", "--infile"): optdict['infile'] = a
         elif o in ("-o", "--output"):
             optdict['output'] = a.replace('.csv', '')
-            optdict['outdir'] = '.'.join([str(time.time()), a.replace('.csv', '')])
+            optdict['outdir'] = '.'.join([time_stamp, a.replace('.csv', '')])
             
         elif o in ("-p", "--permutation"): optdict['permutation'] = int(a)
         else: print "Unsupported argument ", o
