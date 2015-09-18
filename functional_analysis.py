@@ -1066,8 +1066,7 @@ class NetworkInspector:
                 M.chosen = tmp[-1][1]
         
         print_and_loginfo("\nGot ActivityNetwork of %d metabolites." %len(start_nodes))
-        Inspected = nx.subgraph(self.network.network, start_nodes)
-        
+        Inspected = nx.subgraph(self.network.network, [self.network.cpd_dict[x].cpd.id for x in start_nodes]) #x.split('_')[0]
         return Inspected
 
 

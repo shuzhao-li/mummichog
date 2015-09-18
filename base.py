@@ -52,7 +52,6 @@ class Compound(object):
         self.mw = molecular_weight
         self.mzlist = self.make_mzlist(mode=ms_mode)
         self.hitlist = []
-        self.theoretical2empirical={}
         
     def make_mzlist(self, mode='dpj_positive'):
         '''
