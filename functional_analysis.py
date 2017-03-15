@@ -1,4 +1,4 @@
-# Copyright (c) 2010-2015 Shuzhao Li, Andrei Todor
+# Copyright (c) 2010-2017 Shuzhao Li, Andrei Todor
 # All rights reserved.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
@@ -15,20 +15,26 @@ Pathway, module analysis in mummichog;
 then compute activity network.
 Output includes HTML report, result.html, metabolite data and visualization files for Cytoscape 3.
 
+Major change from version 1 to version 2: using EmpiricalCompound in place of cpd.
+
 @author: Shuzhao Li, Andrei Todor
 '''
 
 import logging, random
 from scipy import stats
 import ng_modularity as NGM
-from base import *
+
+
+#from base import *
+from get_user_data import *
+
 from reporting import *
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 
 
-class AnalysisCentral(TableFeatures):
+class AnalysisCentral:
     '''
     Instance to organize analysis data;
     separation of data and presentation from functional units.
@@ -38,6 +44,22 @@ class AnalysisCentral(TableFeatures):
     
     '''
 
+    def __init__(self, mixedNetwork):
+        '''
+        working on v2
+        mixedNetwork = DataMeetModel(theoreticalModel, userData)
+        self.
+        rowDict
+        cpd2mzFeatures
+        ListOfEmpiricalCompounds
+        '''
+        
+        self.mixedNetwork = mixedNetwork
+        self.model = mixedNetwork.model
+        self.data = mixedNetwork.data
+        self.create_dirs()
+
+
     def create_dirs(self):
         '''
         Directory tree
@@ -46,7 +68,7 @@ class AnalysisCentral(TableFeatures):
         sif/ all sif visualization related files
         web/
         '''
-        self.rootdir = os.path.join(self.network.paradict['workdir'], self.network.paradict['outdir'])
+        self.rootdir = os.path.join(self.data.paradict['workdir'], self.data.paradict['outdir'])
         self.csvdir, self.sifdir, self.webdir = os.path.join(
                                                 self.rootdir, 'tsv'), os.path.join(
                                                 self.rootdir, 'sif'), os.path.join(
@@ -63,19 +85,22 @@ class AnalysisCentral(TableFeatures):
         by commenting out some steps 
         
         
-        
-        '''
-        metabolic_pathways = self.network.MetabolicModel.metabolic_pathways
-        PA = PathwayAnalysis(metabolic_pathways, self)
-        self.pathway_result = PA.cpd_enrich_test()
-        
-        MA = ModularAnalysis(self)
-        MA.dispatch()
-        self.top_modules = MA.top_modules
-        
         NI = NetworkInspector(self)
         self.Inspected = NI.inspect_network()
         self.mwstr2mnodes = NI.mwstr2mnodes
+        
+        
+        '''
+        metabolic_pathways = self.model.metabolic_pathways
+        
+        PA = PathwayAnalysis(metabolic_pathways, self.mixedNetwork)
+        self.pathway_result = PA.cpd_enrich_test()
+        
+        MA = ModularAnalysis(self.mixedNetwork)
+        MA.dispatch()
+        self.top_modules = MA.top_modules
+        
+        
         
 
     def export_csv_data(self):
@@ -180,6 +205,7 @@ class AnalysisCentral(TableFeatures):
         print_and_loginfo("Pathway analysis report was written to \n%s (.tsv and .xlsx)" %outfile)
         
     
+    # not used now
     def draw_color_pathways(self, result):
         '''
         draw pathways with p < SIGNIFICANCE_CUTOFF or top 10 pathways
@@ -205,7 +231,7 @@ class AnalysisCentral(TableFeatures):
         return dotline.replace('];', 
                         ', shape="egg", style="filled", color="lawngreen"];\n')
         
-        
+    # not used now
     def draw_colorpath(self, dotstr, featurelist, outfile):
         new = []
         for line in dotstr.splitlines():
@@ -618,19 +644,26 @@ class PathwayAnalysis:
     GF Berriz, OD King, B Bryant, C Sander & FP Roth. 
     Characterizing gene sets with FuncAssociate. 
     Bioinformatics 19(18):2502-2504 (2003)
+    
+    version 2
+    moving everything into EmpiricalCompound space
+    
     '''
-    def __init__(self, pathways, TF):
+    def __init__(self, pathways, mixedNetwork):
         '''
-        Linked to metabolic network via TF.network.
+        mixedNetwork contains both user input data, metabolic model,
+        and mapping btw (mzFeature, EmpiricalCompound, cpd)
+        
         '''
-        self.tf = TF
-        self.network = TF.network
-        self.paradict = TF.network.paradict
+        self.mixedNetwork = mixedNetwork
+        self.network = mixedNetwork.model.network
+        self.paradict = mixedNetwork.data.paradict
         
         self.pathways = self.get_pathways(pathways)
-        self.ref_featurelist = TF.network.ref_featurelist
-        self.input_featurelist = TF.input_featurelist
-        self.input_cpdlist = TF.input_cpdlist
+        
+        self.ListOfEmpiricalCompounds = mixedNetwork.ListOfEmpiricalCompounds
+        self.total_number_EmpiricalCompounds = len(self.ListOfEmpiricalCompounds)
+        
         
         print_and_loginfo("\nPathway Analysis...")
         
@@ -639,56 +672,67 @@ class PathwayAnalysis:
         '''
         convert pathways in JSON formats (import from .py) to list of Pathway class.
         currency metabolites removed.
+        
+        Add list of EmpiricalCompounds
+        
         '''
         new = []
         for j in pathways:
-            P = Pathway()
+            P = metabolicPathway()
             P.json_import(j)
             P.adjusted_p = ''
+            
+            P.EmpiricalCompounds = self.cpd2empiricalCompounds(P.cpds)
+            
             new.append(P)
         return new
+        
 
     def do_permutations(self, pathways, num_perm):
         '''
         Modified from Berriz et al 2003 method.
         After collecting p-values from resampling, do a Gamma fit.
+        
+        Permutation is simplified in version 2; no more new TableFeatures instances.
+        
         '''
         self.permutation_record = []
         print_and_loginfo("Resampling, %d permutations to estimate background ..." 
                           %num_perm)
         
-        N = len(self.input_featurelist)
+        # this is feature number not cpd number
+        N = len(self.mixedNetwork.significant_features)
         for ii in range(num_perm):
             sys.stdout.write( ' ' + str(ii + 1))
             sys.stdout.flush()
-            TFX = TableFeatures(self.network, random.sample(self.ref_featurelist, N))
-            self.permutation_record += (self.calculate_permutation_value(TFX, pathways))
+            query_EmpiricalCompounds = self.mixedNetwork.compile_significant_EmpiricalCompounds(
+                                        random.sample(self.mixedNetwork.mzrows, N) )
+            
+            self.permutation_record += (self.calculate_permutation_value(set(query_EmpiricalCompounds), pathways))
 
         # now do Gamma fit
         print_and_loginfo("\nPathway background is estimated on %d random pathway values" 
                           %len(self.permutation_record))
         self.gamma = stats.gamma.fit(1-np.array(self.permutation_record))
 
-    def calculate_permutation_value(self, TFX, pathways):
+
+    def calculate_permutation_value(self, query_EmpiricalCompounds, pathways):
         '''
-        For each permutated TFX instance,
         calculate the FET p-value for all pathways.
+        But not save anything to Pathway instances.
         '''
         p_of_pathways = [ ]
-        query_set_size = len(TFX.input_cpdlist)
+        query_set_size = len(query_EmpiricalCompounds)
+        total_feature_num = self.total_number_EmpiricalCompounds
+        
         for P in pathways:
-            ecpds=[]
-            for c in P.cpds:
-                if self.network.theoretical2empirical.has_key(c):
-                    for ec in self.network.theoretical2empirical[c]:
-                        ecpds.append(ec)
-            overlap_features = TFX.input_cpdlist.intersection(ecpds)
-            overlap_size = min(len(overlap_features), 
-                               TFX.count_cpd2mz(overlap_features))
+            overlap_features = query_EmpiricalCompounds.intersection(P.EmpiricalCompounds)
+            overlap_size = len(overlap_features)
+            ecpd_num = len(P.EmpiricalCompounds)
             if overlap_size > 0:
-                negneg = self.total_feature_num + overlap_size - P.cpd_num - query_set_size
+                negneg = total_feature_num + overlap_size - ecpd_num - query_set_size
                 p_val = stats.fisher_exact([[overlap_size, query_set_size - overlap_size],
-                                       [P.cpd_num - overlap_size, negneg]], 'greater')[1]
+                                       [ecpd_num - overlap_size, negneg]], 'greater')[1]
                 p_of_pathways.append(p_val)
             else: 
                 p_of_pathways.append(1)
@@ -704,6 +748,7 @@ class PathwayAnalysis:
         to avoid redundant calculations
         '''
         self.do_permutations(pathways, self.paradict['permutation'])
+        
         if self.paradict['modeling'] == 'gamma':
             for P in pathways: 
                 P.adjusted_p = self.calculate_gamma_p(P.p_EASE)
@@ -735,6 +780,16 @@ class PathwayAnalysis:
         a, loc, scale = self.gamma
         return 1 - stats.gamma.cdf(1-x, a, loc, scale)
     
+    
+    def cpd2empiricalCompounds(self, cpds):
+        '''
+        Mapping cpds to empirical_cpds.
+        '''
+        cpds_empirical = []
+        for c in cpds: cpds_empirical += self.mixedNetwork.Compounds_to_EmpiricalCompounds.get(c, [])
+        return set(cpds_empirical)
+        
+    
     def cpd_enrich_test(self):
         '''
         Fisher Exact Test in cpd space, after correction of detected cpds.
@@ -743,42 +798,38 @@ class PathwayAnalysis:
         >>> stats.fisher_exact([[12, 5], [29, 2]], 'greater')[1]
         0.99452520602188932
         
+        query size is now counted by EmpiricalCompounds.
+        
+        adjusted_p should be model p-value, not fdr.
         '''
         FET_tested_pathways = []
-        qset = self.input_cpdlist
+        qset = self.mixedNetwork.significant_EmpiricalCompounds
         query_set_size = len(qset)
-        self.total_cpds = total_cpds = self.network.total_matched_cpds
-        self.total_feature_num = total_feature_num = len(total_cpds)
+        total_feature_num = self.total_number_EmpiricalCompounds
         
-        print_and_loginfo("query_set_size = %d compounds" %query_set_size)
-        print_and_loginfo("total_feature_num = %d compounds" %total_feature_num)
+        print_and_loginfo("Query number of significant compounds = %d compounds" %query_set_size)
         
         for P in self.pathways:
-            ecpds=[]
-            for c in P.cpds:
-                if self.network.theoretical2empirical.has_key(c):
-                    for ec in self.network.theoretical2empirical[c]:
-                        ecpds.append(ec)
-            ecpds = total_cpds.intersection(set(ecpds))
-            ecpd_num = len(ecpds)
-            P.overlap_features = qset.intersection(ecpds)
-            P.overlap_size = overlap_size = min(len(P.overlap_features), 
-                               self.tf.count_cpd2mz(P.overlap_features))
-            
-            # need? if overlap_size > 0
-            negneg = total_feature_num + overlap_size - ecpd_num - query_set_size
-            # Fisher's exact test
-            P.p_FET = stats.fisher_exact([[overlap_size, query_set_size - overlap_size],
+            # use the measured pathway size
+            P.overlap_EmpiricalCompounds = P.overlap_features = qset.intersection(P.EmpiricalCompounds)
+            P.overlap_size = overlap_size = len(P.overlap_EmpiricalCompounds)
+            ecpd_num = len(P.EmpiricalCompounds)
+            if overlap_size > 0:
+                negneg = total_feature_num + overlap_size - ecpd_num - query_set_size
+                # Fisher's exact test
+                P.p_FET = stats.fisher_exact([[overlap_size, query_set_size - overlap_size],
                                    [ecpd_num - overlap_size, negneg]], 'greater')[1]
-            # EASE score as in Hosack et al 2003
-            P.p_EASE = stats.fisher_exact([[max(0, overlap_size - 1), query_set_size - overlap_size],
+                # EASE score as in Hosack et al 2003
+                P.p_EASE = stats.fisher_exact([[max(0, overlap_size - 1), query_set_size - overlap_size],
                                    [ecpd_num - overlap_size + 1, negneg]], 'greater')[1]
-            
+            else:
+                P.p_FET = P.p_EASE = 1
+                
             FET_tested_pathways.append(P)
             #  (enrich_pvalue, overlap_size, overlap_features, P) 
             
         result = [(P.adjusted_p, P) for P in 
-                  self.adjust_p_by_permutations(FET_tested_pathways)]
+                                        self.adjust_p_by_permutations(FET_tested_pathways)]
         result.sort()
         result = [x[1] for x in result]
         self.record_sigpath_cpds(result)
@@ -788,7 +839,8 @@ class PathwayAnalysis:
     
     def record_sigpath_cpds(self, result):
         use_result = [r for r in result if r.adjusted_p < SIGNIFICANCE_CUTOFF]
-        for P in use_result: self.network.significant_cpdlist += P.overlap_features
+        for P in use_result: self.mixedNetwork.hit_EmpiricalCompounds += P.overlap_EmpiricalCompounds
+        print self.mixedNetwork.hit_EmpiricalCompounds[:5]
     
 
 
@@ -803,22 +855,32 @@ class ModularAnalysis:
     compute activity score that combines modularity and enrichment.
     2) Permutations by randomly selecting features from ref_mzlist;
     compute p-values based on permutations.
+    
+    Working on version 2:
+    Module analysis will still be in the compound space, as network model is defined by compound edges.
+    Just need tracking mapping btw compound and EmpiricalCompounds
+    
     '''
-    def __init__(self, TF):
+    def __init__(self, mixedNetwork):
         '''
-        class needs a reference metabolic network: TF.network.
-        TF.network.paradict passes user supplied arguments/parameters.
+        mapping btw (mzfeature, cpd) has to be via ListOfEmpiricalCompounds, 
+        so that cpd can be tracked back to EmpiricalCompounds
         '''
-        self.tf = TF
-        self.network = TF.network
-        self.paradict = TF.network.paradict
+        self.mixedNetwork = mixedNetwork
+        self.network = mixedNetwork.model.network
+        self.paradict = mixedNetwork.data.paradict
         
-        self.input_featurelist = self.tf.input_featurelist
-        self.ref_featurelist = self.network.ref_featurelist
+        # both using row_numbers
+        self.ref_featurelist = self.mixedNetwork.mzrows
+        
+        self.significant_features = self.mixedNetwork.significant_features
+        
+        significant_EmpiricalCompounds = self.mixedNetwork.significant_EmpiricalCompounds
         cpdlist=[]
-        for c in self.tf.input_cpdlist:
-            cpdlist.append(self.tf.network.cpd_dict[c].cpd.id)
-        self.seed_cpds = set(cpdlist)#self.tf.input_cpdlist
+        for E in significant_EmpiricalCompounds: cpdlist += E.compounds
+        self.seed_cpds = set(cpdlist)
+        
+        
         
         self.modules_from_input = []
         self.permuation_mscores = []
@@ -845,13 +907,30 @@ class ModularAnalysis:
         This function is used by permutation only as the real input is analyzed by
         self.run_analysis_real(), which stores more information.
         '''
-        mscores = [x.A for x in self.mz2modules(input_mzlist)] or [0]
+        mscores = [x.A for x in self.mzFeatures2modules(input_mzlist)] or [0]
+        
         self.permuation_mscores += mscores
+
+
+    def mzFeatures2modules(self, mzFlist):
+        '''
+        This can use mzFeature to Compound as a shortcut for fast permuations tests.
+        '''
+
+        cpdlist=[]
+        for m in mzFlist:
+            cpdlist += self.mixedNetwork.rowindex_to_Compounds.get(m, [])
+
+        return self.find_modules(set(cpdlist))
+        
 
     def mz2modules(self, input_mzlist):
         '''
         wrapper function, mz2cpds then find_modules.
         The permutated input list is fuzzy matched via self.network.mz2cpds().
+        
+        
+        not used now.
         '''
         TFX = TableFeatures(self.network, input_mzlist)
         cpdlist=[]
@@ -860,7 +939,69 @@ class ModularAnalysis:
 
         return self.find_modules(set(cpdlist))#TFX.input_cpdlist)
 
+
+
+
+
     def find_modules(self, cpds):
+        '''
+        get connected nodes in up to 4 steps.
+        modules are set of connected subgraphs plus split moduels within.
+        A shaving step is applied to remove excessive nodes that do not 
+        connect seeds (thus Mmodule initiation may reduce graph size). 
+        A module is only counted if it contains more than one seeds.
+        '''
+        global SEARCH_STEPS
+        seeds, modules, modules2, module_nodes_list = cpds, [], [], []
+
+        for ii in range(SEARCH_STEPS):
+            edges = nx.edges(self.network, seeds)
+            if ii == 0:
+                # step 0, counting edges connecting seeds
+                edges = [x for x in edges if x[0] in seeds and x[1] in seeds]
+                new_network = nx.from_edgelist(edges)
+                
+            else:
+                # step 1, 2, 3, ... growing to include extra steps/connections
+                new_network = nx.from_edgelist(edges)
+                seeds = new_network.nodes()
+            
+            for sub in nx.connected_component_subgraphs(new_network):
+                if 3 < sub.number_of_nodes() < 500:
+                    M = Mmodule(self.network, sub, cpds, self.mixedNetwork
+                    
+                    
+                    
+                    )
+                    modules.append(M)
+                
+        # add modules split from modules
+        if USE_DEBUG:
+            logging.info( '# initialized network size = %d' %len(seeds) )
+            # need export modules for comparison to heinz
+            self.export_debug_modules( modules )
+            
+        for sub in modules:
+            if sub.graph.number_of_nodes() > 5:
+                modules2 += [Mmodule(self.network, x, cpds, self.mixedNetwork
+                
+                
+                                )
+                             for x in self.split_modules(sub.graph)]
+        
+        new = []
+        for M in modules + modules2:
+            if M.graph.number_of_nodes() > 3 and M.nodestr not in module_nodes_list:
+                new.append(M)
+                module_nodes_list.append(M.nodestr)
+                if USE_DEBUG: logging.info( str(M.graph.number_of_nodes()) + ', ' + str(M.A) )
+
+        return new
+
+
+
+
+    def find_modules_v2testing(self, cpds):
         '''
         get connected nodes in up to 4 steps.
         modules are set of connected subgraphs plus split moduels within.
@@ -947,8 +1088,12 @@ class ModularAnalysis:
         '''
         Run num_perm permutations on mzlist;
         populate activity scores in self.permuation_mscores
+        
+        version 2:
+        self.ref_featurelist is now using row_numbers
+        
         '''
-        N = len(self.input_featurelist)
+        N = len(self.significant_features)
         for ii in range(num_perm):
             sys.stdout.write( ' ' + str(ii+1))
             sys.stdout.flush()

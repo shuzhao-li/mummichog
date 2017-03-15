@@ -16,17 +16,18 @@ to write output results and do visualization.
 
 @author: Shuzhao Li
 
+try:
+    import pygraphviz as pgv
+except ImportError:
+    print("Pygraphviz is not found. Skipping...")
+
+
 '''
 
 
 import csv, xlsxwriter, logging
 import numpy as np
 from websnippets import *
-
-try:
-    import pygraphviz as pgv
-except ImportError:
-    print("Pygraphviz is not found. Skipping...")
 
 
 

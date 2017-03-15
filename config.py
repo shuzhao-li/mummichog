@@ -17,8 +17,8 @@ configuration and utility functions of mummichog
 '''
 
 LAST_Hg_TIP = ''
-VERSION = '1.0.3' + LAST_Hg_TIP
-RELEASE = True
+VERSION = '2.0-dev' + LAST_Hg_TIP
+RELEASE = False
 USE_DEBUG = False
 
 
@@ -28,8 +28,9 @@ import numpy as np
 
 SEARCH_STEPS = 4
 SIGNIFICANCE_CUTOFF = 0.05
+MASS_RANGE = (50, 2000)
 
-TOTAL_CPDS_NUM = 4650   # no use for now
+#TOTAL_CPDS_NUM = 4650   # no use for now
 PROTON = 1.00727646677
 
 
@@ -89,6 +90,32 @@ def mz_tolerance(mz, mode):
             return 0.000010*mz
   
 
+
+wanted_adduct_list = {
+    'pos_default': ['M[1+]', 'M+H[1+]', 'M+2H[2+]', 'M(C13)+H[1+]', 'M(C13)+2H[2+]', 
+                    'M+Na[1+]', 'M+H+Na[2+]', 'M+HCOONa[1+]'
+                    ],
+    'dpj_positive': ['M[1+]', 'M+H[1+]', 'M+2H[2+]', 'M(C13)+H[1+]', 'M(C13)+2H[2+]', 
+                    'M+Na[1+]', 'M+H+Na[2+]', 'M+HCOONa[1+]',
+                    'M(Cl37)+H[1+]', 'M(S34)+H[1+]', 'M+K[1+]', 'M+HCOOK[1+]', 
+                    ],
+    'generic_positive': ['M[1+]','M+H[1+]','M+2H[2+]','M+3H[3+]','M(C13)+H[1+]','M(C13)+2H[2+]',
+                    'M(C13)+3H[3+]','M(S34)+H[1+]','M(Cl37)+H[1+]','M+Na[1+]','M+H+Na[2+]','M+K[1+]',
+                    'M+H2O+H[1+]','M-H2O+H[1+]','M-H4O2+H[1+]','M-NH3+H[1+]','M-CO+H[1+]',
+                    'M-CO2+H[1+]','M-HCOOH+H[1+]','M+HCOONa[1+]','M-HCOONa+H[1+]','M+NaCl[1+]',
+                    'M-C3H4O2+H[1+]','M+HCOOK[1+]','M-HCOOK+H[1+]',
+                    ],
+    'negative': ['M-H[-]','M-2H[2-]','M(C13)-H[-]','M(S34)-H[-]','M(Cl37)-H[-]',
+                    'M+Na-2H[-]','M+K-2H[-]','M-H2O-H[-]','M+Cl[-]','M+Cl37[-]',
+                    'M+Br[-]','M+Br81[-]','M+ACN-H[-]','M+HCOO[-]','M+CH3COO[-]','M-H+O[-]'
+    
+                    ],
+
+    # to add options
+
+    }
+
+
 def adduct_function(mw, mode):
     '''
     return a list of derivatives/adducts according to operation mode.
@@ -99,6 +126,12 @@ def adduct_function(mw, mode):
     
     Some derivatives are not possible for some compounds, 
     subject to future upgrade.
+    
+    
+    Paul Benton sent a list used in XCMSonline.
+    
+    
+    
     '''
     if mode == 'dpj_positive':
         return [(mw, 'M[1+]'), 

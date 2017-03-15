@@ -39,8 +39,10 @@ Removing
 
 '''
 
-import time, getopt, logging
+import time, getopt
 from config import *
+from functional_analysis import *
+
 
 def cli_options(opts):
     time_stamp = str(time.time())
@@ -50,7 +52,7 @@ def cli_options(opts):
                'network': 'human_mfn',
                'modeling': 'gamma',
                'evidence': 3,
-               'mode': 'dpj',
+               'mode': 'pos_default',
                'instrument': 'unspecified',
                'force_primary_ion': False,
                'visualization': 2,
@@ -162,9 +164,10 @@ def dispatcher():
 if __name__ == '__main__':
 
     print fishlogo
-    print "mummichog version %s \n" %VERSION
+    print ('### Development version, testing')   # "mummichog version %s \n" %VERSION
     optdict = dispatcher()
     
+    '''
     # locate current path, for safe pydata import
     cmd_folder = os.path.split(inspect.getfile( inspect.currentframe() ))[0]
     if cmd_folder not in sys.path: sys.path.insert(0, cmd_folder)
@@ -187,7 +190,7 @@ if __name__ == '__main__':
         
     else:
         raise KeyError( "Unsupported species/model. Pls contact author." )
-        
+    '''    
     
     # prepare output
     os.mkdir(os.path.join(optdict['workdir'], optdict['outdir']))
@@ -205,6 +208,21 @@ if __name__ == '__main__':
 
     print_and_loginfo("Started @ %s\n" %time.asctime())
     
+    
+    userData = InputUserData(optdict)
+    
+    # can specify which model in metabolicModels[]
+    theoreticalModel = metabolicNetwork(metabolicModels[ 'human_model_mfn' ])
+    
+    mixedNetwork = DataMeetModel(theoreticalModel, userData)
+    
+    AC = AnalysisCentral(mixedNetwork)
+    AC.run_all_analysis()
+    
+    
+    
+    
+    '''
     HNET = HsaNetwork(MetabolicModel, optdict)
     
     # if not optdict['targeted']:
@@ -212,9 +230,11 @@ if __name__ == '__main__':
     AC = AnalysisCentral(HNET, HNET.input_featurelist)
     AC.create_dirs()
     AC.run_all_analysis()
+    
     AC.export_csv_data()
     AC.export_sif_related()
     AC.web_export()
+    '''
     
     # else
     # Targeted analysis
