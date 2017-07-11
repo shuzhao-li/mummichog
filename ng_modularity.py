@@ -4,6 +4,10 @@ implementation of the module-finding algorithms from
 
 A) Mark E.J. Newman (2006), PNAS 103:8577-8582
 B) Rivera, Corban G., Rachit Vakil, and Joel S. Bader. BMC bioinformatics 11.Suppl 1 (2010): S61.
+
+This was from Ca. 2008... 
+Future work should improve its efficiency or use a more efficient module-finding algorithm.
+Last modified to add fielding numpy.linalg.linalg.linAlgError, Shuzhao Li, 2017-05-15
 """
 
 USE_TEST_MODE = False
@@ -49,20 +53,27 @@ class module:
         divide module in two by leading eigenvector.
         This function reproduced the karate club data as given in 
         http://www-personal.umich.edu/~mejn/courses/2004/cscs535/problems5.pdf
+        
+        Occassionally running into "numpy.linalg.linalg.linAlgError: Eigenvalues did not converge"
+        
         """
         self.fetch_modularity_matrix(nobj)
-        [eigenvalues, eigenvectors] = linalg.eig(self.modularity_matrix)
         group1, group2 = [], []
-        if eigenvalues.max() > 0:
-            # vector corresponding to max eigenvalue, normalized
-            lead_vector = eigenvectors[:, eigenvalues.argmax()]
-            for ii in range(self.num_nodes):
-                if lead_vector[ii] < 0:
-                    group1.append(self.nodes[ii])
-                else:
-                    group2.append(self.nodes[ii])
-            self.calculate_s(group1, group2)
-            self.delta_Q = self.compute_delta_Q(nobj)
+        try:
+            [eigenvalues, eigenvectors] = linalg.eig(self.modularity_matrix)
+            if eigenvalues.max() > 0:
+                # vector corresponding to max eigenvalue, normalized
+                lead_vector = eigenvectors[:, eigenvalues.argmax()]
+                for ii in range(self.num_nodes):
+                    if lead_vector[ii] < 0:
+                        group1.append(self.nodes[ii])
+                    else:
+                        group2.append(self.nodes[ii])
+                self.calculate_s(group1, group2)
+                self.delta_Q = self.compute_delta_Q(nobj)
+        except numpy.linalg.linalg.linAlgError:
+            pass
+        
         return group1, group2
 
     def first_Q(self, nobj):

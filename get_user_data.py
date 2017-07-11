@@ -10,25 +10,23 @@
 '''
 Data input functions in mummichog
 
-
 Read user input data from
     text files; xls files
     web form 
     future API support
 
-
 Overall design in v2: separating user input from theoretical model.
-
-
-
-
-
 
 @author: Shuzhao Li
 
 '''
-
+import time, getopt, urllib, base64
 import logging
+import StringIO
+
+import matplotlib.pyplot as plt
+
+
 from config import *
 from models import *
 
@@ -36,19 +34,145 @@ from models import *
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 def print_and_loginfo(s):
-    print s
+    '''
+    This function should retire?
+    '''
+    #print s
     logging.info(s)
 
+#
+# Functions to take command line input
+#
+
+def cli_options(opts):
+    '''
+    Ongoing work in version 2, making some options obsolete.
+    '''
+    time_stamp = str(time.time())
+    optdict = {'analysis': 'total',
+               'cutoff': 0,
+               'targeted': False,
+               'network': 'human_mfn',
+               'modeling': None,
+               'evidence': 3,
+               'mode': 'pos_default',
+               'instrument': 'unspecified',
+               'force_primary_ion': True,
+               'visualization': 2,
+               'workdir': '',
+               'input': '',
+               'reference': '',
+               'infile': '',
+               'output': '',
+               'permutation': 100,
+               'outdir': 'mcgresult' + time_stamp,
+               }
+    booleandict = {'T': True, 'F': False, 1: True, 0: False, 
+                   'True': True, 'False': False, 'TRUE': True, 'FALSE': False, 'true': True, 'false': False,
+                   }
+    # update default from user argument
+    for o, a in opts:
+        if o in ("-a", "--analysis"): optdict['analysis'] = a
+        elif o in ("-c", "--cutoff"): optdict['cutoff'] = float(a)
+        elif o in ("-t", "--targeted"): optdict['targeted'] = booleandict.get(a, False)
+        elif o in ("-n", "--network"): optdict['network'] = a
+        elif o in ("-z", "--force_primary_ion"): optdict['force_primary_ion'] = booleandict.get(a, True)
+        elif o in ("-d", "--modeling"): optdict['modeling'] = a
+        elif o in ("-e", "--evidence"): optdict['evidence'] = int(a)
+        elif o in ("-m", "--mode"): optdict['mode'] = a
+        elif o in ("-u", "--instrument"): optdict['instrument'] = a
+        elif o in ("-v", "--visualization"): optdict['visualization'] = int(a)
+        elif o in ("-k", "--workdir"): optdict['workdir'] = a
+        elif o in ("-i", "--input"): optdict['input'] = a
+        elif o in ("-r", "--reference"): optdict['reference'] = a
+        elif o in ("-f", "--infile"): optdict['infile'] = a
+        elif o in ("-o", "--output"):
+            optdict['output'] = a.replace('.csv', '')
+            optdict['outdir'] = '.'.join([time_stamp, a.replace('.csv', '')])
+            
+        elif o in ("-p", "--permutation"): optdict['permutation'] = int(a)
+        else: print "Unsupported argument ", o
+    
+    return optdict
 
 
+
+def dispatcher():
+    '''
+    Dispatch command line arguments to corresponding functions.
+    No user supplied id is used in version 1.
+    User supplied IDs, str_mz_rtime IDs and targeted metabolites will be supported in version 2.
+    
+
+    '''
+    helpstr = '''
+    Usage example:
+    python main.py -f mydata.txt -o myoutput
+    
+        -f, --infile: single file as input, 
+              containing all features with tab-delimited columns
+              m/z, retention time, p-value, statistic score
+        
+        -t, --targeted: set to True if using targeted metabolomics data
+        -n, --network: network model to use (default human_mfn), 
+              [human, human_mfn, mouse, fly, yeast]
+        
+        -o, --output: output file identification string (default 'mcgresult')
+        -k, --workdir: directory for all data files.
+              Default is current directory.
+        
+        -m, --mode: analytical mode of mass spec, [positive, negative, dpj].
+              Default is dpj, a short version of positive.
+        -u, --instrument: [5, 10, 25, FTMS, ORBITRAP].
+              Any integer is treated as ppm. Default is 10. 
+              Instrument specific functions may be implemented.
+              
+        -p, --permutation: number of permutation to estimate null distributions.
+              Default is 100.
+        -z,   --force_primary_ion: one of primary ions, 
+              ['M+H[1+]', 'M+Na[1+]', 'M-H2O+H[1+]', 'M-H[-]', 'M-2H[2-]', 'M-H2O-H[-]'],  
+              must be present for a predicted metabolite, [True, False].
+              Default is True.
+        
+        -c, --cutoff: optional cutoff p-value in user supplied statistics,
+              used to select significant list of features. 
+        -e, --evidence: cutoff score for metabolite to be in activity network.
+              Default is 3.
+        -d, --modeling: modeling permutation data, [no, gamma].
+              Default is no.
+        '''
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "a:c:t:d:e:m:n:u:z:v:k:i:r:f:o:p:", 
+                            ["analysis=", "cutoff", "targeted=", "modeling=", "evidence=", "mode=", 
+                             "network=", "instrument=", "force_primary_ion",
+                             "visualization=", "workdir=", "input=", 
+                             "reference=", "infile=", "output=", "permutation="])
+        if not opts:
+            print helpstr
+            sys.exit(2)
+        
+    except getopt.GetoptError, err:
+        print str(err)
+        sys.exit(2)
+    
+    return cli_options(opts)
+    
+
+#
+# -----------------------------------------------------------------------------
+#
+# classes for data structure
 
 class MassFeature:
     '''
     Data model, to store info per input feature
-    
+    row_number is used as unique ID. A string like "row23" is used instead of integer for two reasons:
+    to enforce unique IDs in string not in number, and for clarity throughout the code;
+    to have human friendly numbering, starting from 1 not 0.
     '''
     def __init__(self, row_number, mz, retention_time, p_value, statistic, CompoundID_from_user=''):
-        self.row_number = row_number
+        self.row_number = row_number        # Unique ID
         self.mz = mz
         self.retention_time = retention_time
         self.p_value = p_value
@@ -66,16 +190,9 @@ class MassFeature:
         self.database_match = []
 
     def make_str_output(self):
-        return '\t'.join( [str(x) for x in [elf.row_number, self.mz, self.retention_time, 
+        return '\t'.join( [str(x) for x in [self.row_number, self.mz, self.retention_time, 
                             self.p_value, self.statistic, self.CompoundID_from_user,
-                            ','.join(self.matched_compounds),
                             ]] ) 
-
-    def match_compounds(self):
-        return 0
-
-
-
 
 
 class EmpiricalCompound:
@@ -95,41 +212,42 @@ class EmpiricalCompound:
     '''
     def __init__(self, listOfFeatures):
         '''
-        
-        compound IDs, row # for massFeatures
-        
+        Initiation using 
         listOfFeatures = [[retention_time, row_number, ion, mass, compoundID], ...]
-        
-        
+        This will be merged and split later to get final set of EmpCpds.
         '''
         self.listOfFeatures = listOfFeatures
-        self.str_row_ion = self.make_str_row_ion()
-        self.unpack_listOfFeatures()
-                      
-        self.mostLikelyCompounds = []
-        # mostLikelyCompound will be designated by module/pathway analysis
+        self.listOfFeatures.sort(key=lambda x: x[1])
+        self.str_row_ion = self.__make_str_row_ion__()          # also a unique ID
+        self.__unpack_listOfFeatures__()
+        
+        self.EID = ''
+        self.chosen_compounds = []
+        self.face_compound = ''
+        
         self.evidence_score = 0
-        self.chosen = None
         self.primary_ion_present = False
-        #self.evaluate()
+        self.statistic = 0
+    
+    def __make_str_row_ion__(self):
+        '''
+        feature order is fixed now after sorting by row_number
+        '''
+        return ";".join([x[1]+'_'+x[2] for x in self.listOfFeatures])
     
     
-    def make_str_row_ion(self):
-        return ";".join([x[1]+x[2] for x in self.listOfFeatures])
-    
-    
-    
-    def unpack_listOfFeatures(self):
+    def __unpack_listOfFeatures__(self):
         
         self.compounds = list(set([x[4] for x in self.listOfFeatures]))
         self.massfeature_rows = [x[1] for x in self.listOfFeatures]
-        self.ions = dict([x[3:5] for x in self.listOfFeatures])
-        
+        self.ions = dict([x[2:4] for x in self.listOfFeatures])
+        self.row_to_ion = dict( [x[1:3] for x in self.listOfFeatures] )
         
         
     def join(self, E):
         '''
-        join another instance with identical ions
+        join another instance with identical ions.
+        str_row_ion must be the same to be joined.
         '''
         for c in E.compounds:
             if c not in self.compounds:
@@ -138,48 +256,65 @@ class EmpiricalCompound:
         
     def evaluate(self):
         '''
-        Compute evidence scores using a weight dictionary. The logic goes as -
-        If 'M+H[1+]' present, 
-        any of ('M+2H[2+]', 'M(C13)+H[1+]', 'M+Na[1+]', 'M+K[1+]', 'M+2Na[2+]') confirms.
-        If 'M+2H[2+]' present,
-        'M(C13)+2H[2+]' confirms.
-        Compound.hitlist = [(input mz, match form, diff), ...] --- Changed!!!
-        [( MassFeature instance, match form, diff), ...]
+        test if EmpCpds has any of primary_ions as defined in config.py, 
+        ['M+H[1+]', 'M+Na[1+]', 'M-H2O+H[1+]', 'M-H[-]', 'M-2H[2-]', 'M-H2O-H[-]']
         
+        evidence_score is combining weight scores from multiple adducts.
         
+        No need to separate ionMode upfront ("positive", "negative")
+        Bad ones should not be used for downstream analysis...
         
-        to redo
         '''
-        matchforms = set([x[1] for x in self.hitlist])
-        if 'M+H[1+]' in matchforms or 'M-H[-]' in matchforms:
-            self.primary_ion_present = True
-        for x in matchforms: 
-            self.evidence_score += dict_weight_adduct[x]
         
+        if set(self.ions.keys()).intersection(primary_ions):
+            self.primary_ion_present = True
+        
+        for x in self.ions.keys(): 
+            self.evidence_score += dict_weight_adduct[x]
+            
+            
+    def update_chosen_cpds(self, cpd):
+        if cpd not in self.chosen_compounds:
+            self.chosen_compounds.append(cpd)
 
+    def designate_face_cpd(self):
+        '''
+        When there are more than one compounds suggested by pathway and module analysis,
+        one is arbitrarily designated as "face compound".
+        '''
+        self.face_compound = self.chosen_compounds[-1]
 
-
+    def get_mzFeature_of_highest_statistic(self, dict_mzFeature):
+        '''
+        Take highest abs(statistic) among all matched ions,
+        which will give statistic value for downstream output.
+        '''
+        all = [dict_mzFeature[r] for r in self.massfeature_rows]
+        all.sort(key=lambda m: abs(m.statistic))
+        self.mzFeature_of_highest_statistic = all[-1]
 
 
 class InputUserData:
     '''
     
     backward compatibility, 1 or 2-file input formats
-    Per Joshua, there'd be an option to test user designated L_sig, but user specified IDs are required
+    Per Joshua C., there'd be an option to test user designated L_sig, but user specified IDs are required
     
     return ListOfMassFeatures
     self.input_featurelist is "L_sig".
-    
-    Targeted data should use a separate workflow.
-    
     '''
     
     def __init__(self, paradict):
         self.paradict = paradict
         self.header_fields = []
         self.ListOfMassFeatures = []
+        self.input_featurelist = []
+        
         self.read()
         self.determine_significant_list(self.ListOfMassFeatures)
+        
+        self.max_retention_time = max([M.retention_time for M in self.ListOfMassFeatures])
+        self.max_mz = max([M.mz for M in self.ListOfMassFeatures])
         
         
     def text_to_ListOfMassFeatures(self, textValue, delimiter='\t'):
@@ -187,7 +322,7 @@ class InputUserData:
         Column order is hard coded for now, as mz, retention_time, p_value, statistic, CompoundID_from_user
         '''
         #
-        lines = self.check_redundant( textValue.splitlines() )
+        lines = self.__check_redundant__( textValue.splitlines() )
         self.header_fields = lines[0].rstrip().split(delimiter)
         excluded_list = []
         for ii in range(len( lines )-1):
@@ -215,7 +350,7 @@ class InputUserData:
     def read_from_webform(self, t):
         return t
 
-    def check_redundant(self, L):
+    def __check_redundant__(self, L):
         redundant = len(L) - len(set(L))
         if redundant > 0:
             print_and_loginfo( "Your input file contains %d redundant features." %(redundant) )
@@ -229,26 +364,23 @@ class InputUserData:
         '''
         self.text_to_ListOfMassFeatures( 
                 open(os.path.join(self.paradict['workdir'], self.paradict['infile'])).read() )
+        print_and_loginfo("Read %d features as reference list." %len(self.ListOfMassFeatures))
     
     
-    
-    # in work
+    # more work?
     def determine_significant_list(self, all_feature_list):
         '''
         For single input file format in ver 2. 
         The significant list, input_mzlist, should be a subset of ref_mzlist,
         determined either by user specificed --cutoff,
-        or by automated cutoff close to a p-value hotspot.
-        
+        or by automated cutoff close to a p-value hotspot,
+        in which case, paradict['cutoff'] is updated accordingly.
         
         '''
-        if self.paradict['cutoff']:
-            # use user specified cutoff
-            self.input_featurelist = [x.row_number for x in all_feature_list if x.p_value < self.paradict['cutoff']]
-        else:
+        if not self.paradict['cutoff']:
             # automated cutoff
-            new = [(x.p_value, x) for x in all_feature_list]
-            new.sort()
+            new = sorted(all_feature_list, key=lambda x: x.p_value)
+            
             p_hotspots = [ 0.2, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0001 ]
             N_hotspots = [ len([x for x in all_feature_list if x.p_value < pp]) for pp in p_hotspots ]
             
@@ -268,15 +400,74 @@ class InputUserData:
             
             if chosen > 100:
                 N_chosen = int(N_quantile)
-                print_and_loginfo("Using %d top quantile of features as significant list." %N_chosen)
+                self.paradict['cutoff'] = new[N_chosen+1].p_value
             else:
-                N_chosen = N_hotspots[chosen]
-                print_and_loginfo("Using %d features (p < %f) as significant list." %(N_chosen, p_hotspots[chosen]))
+                #N_chosen = N_hotspots[chosen]
+                
+                self.paradict['cutoff'] = p_hotspots[chosen]
         
-            self.input_featurelist = [x[1].row_number for x in new[:N_chosen]]
+            print_and_loginfo("Automatically choosing (p < %f) as significant cutoff."  %self.paradict['cutoff'])  
         
+        # mark MassFeature significant
+        for f in self.ListOfMassFeatures:
+            if f.p_value < self.paradict['cutoff']:
+                f.is_significant = True
+        
+        self.input_featurelist = [f.row_number for f in self.ListOfMassFeatures if f.is_significant]
+        print_and_loginfo("Using %d features (p < %f) as significant list." 
+                              %(len(self.input_featurelist), self.paradict['cutoff']))  
 
 
+    def make_manhattan_plots(self, outfile='mcg_MWAS'):
+        '''
+        Manhattan plots of significance vs m/z, rtime.
+        To use with reporting class
+        '''
+        
+        # determine parameters
+        figsize = (6, 3)
+        CutoffLine = -np.log10(self.paradict['cutoff'])
+        sigList = [ f for f in self.ListOfMassFeatures if f.p_value < self.paradict['cutoff'] ]
+        restList = [ f for f in self.ListOfMassFeatures if f.p_value >= self.paradict['cutoff'] ]
+        Y_label = "-log10 p-value"
+        Y_black = [-np.log10(f.p_value) for f in restList]
+        Y_green = [-np.log10(f.p_value) for f in sigList]
+        X_label = ["m/z", "Retention time"]
+        X_black = [ [f.mz for f in restList], [f.retention_time for f in restList] ]
+        X_green = [ [f.mz for f in sigList], [f.retention_time for f in sigList] ]
+        X_max = [self.max_mz, self.max_retention_time]
+        
+        # plot two panels, MWAS on m/z and rtime
+        fig, myaxes = plt.subplots(figsize=figsize, nrows=1, ncols=2)
+        for ii in range(2):
+            
+            myaxes[ii].scatter( X_black[ii], Y_black, s = 5, c='black', linewidths =0, alpha=0.8 )
+            myaxes[ii].scatter( X_green[ii], Y_green, s=5, c='green', linewidths =0, alpha=0.8 )
+            # lines
+            myaxes[ii].plot([0,X_max[ii]], [CutoffLine, CutoffLine], 'g--')
+        
+            myaxes[ii].spines['right'].set_visible(True)
+            myaxes[ii].spines['top'].set_visible(True)
+            myaxes[ii].yaxis.set_ticks_position('both')
+            myaxes[ii].xaxis.set_ticks_position('both')
+            myaxes[ii].set_xlabel(X_label[ii])
+            myaxes[ii].set_ylabel(Y_label)
+            
+        #plt.title("Feature significance")
+        plt.tight_layout()
+        plt.savefig(outfile+'.pdf')
+        
+        # get in-memory string for web use
+        figdata = StringIO.StringIO()
+        plt.savefig(figdata, format='png')
+        figdata.seek(0)
+        uri = 'data:image/png;base64,' + urllib.quote(base64.b64encode(figdata.buf))
+        return '<img src = "%s"/>' % uri
+        
+        
+        
+        
+        
 
 # metabolicNetwork
 
@@ -297,41 +488,42 @@ class DataMeetModel:
     
     
     This returns the tracking map btw massFeatures - EmpiricalCompounds - Compounds
-    Number of EmpiricalCompounds will be used to compute enrichment.
+    Number of EmpiricalCompounds will be used to compute pathway enrichment, and control for module analysis.
     
 
     '''
     def __init__(self, theoreticalModel, userData):
         '''
-        working on v2
         # from ver 1 to ver 2, major change in .match()
+        Trio structure of mapping
+        (M.row_number, EmpiricalCompounds, Cpd)
         
-        Important data indices:
-        self.
-        rowDict
-        cpd2mzFeatures
-        ListOfEmpiricalCompounds
         '''
-        
         self.model = theoreticalModel
         self.data = userData
-        self.build_cpdindex( self.data.paradict['mode'] )
-        self.build_rowindex( self.data.ListOfMassFeatures )
+        
+        # retention time window for grouping, based on fraction of max rtime
+        self.rtime_tolerance = self.data.max_retention_time * RETENTION_TIME_TOLERANCE_FRAC
+        
+        # major data structures
+        self.IonCpdTree = self.__build_cpdindex__( self.data.paradict['mode'] )
+        self.rowDict = self.__build_rowindex__( self.data.ListOfMassFeatures )
+        self.ListOfEmpiricalCompounds = self.get_ListOfEmpiricalCompounds()
+        
+        # this is the reference list
         self.mzrows = [M.row_number for M in self.data.ListOfMassFeatures]
         
-        self.match_all_to_all()
-        self.rowindex_to_EmpiricalCompounds = self.make_rowindex_to_EmpiricalCompounds()
-        self.Compounds_to_EmpiricalCompounds = self.index_Compounds_to_EmpiricalCompounds()
-        self.rowindex_to_Compounds = self.make_rowindex_to_Compounds()
+        self.rowindex_to_EmpiricalCompounds = self.__make_rowindex_to_EmpiricalCompounds__()
+        self.Compounds_to_EmpiricalCompounds = self.__index_Compounds_to_EmpiricalCompounds__()
         
+        # this is the sig list
         self.significant_features = self.data.input_featurelist
-        self.significant_EmpiricalCompounds = self.compile_significant_EmpiricalCompounds(self.significant_features)
+        self.TrioList = self.batch_rowindex_EmpCpd_Cpd( self.significant_features )
         
-        self.hit_EmpiricalCompounds = []
+        
+        
 
-
-
-    def build_cpdindex(self, msmode):
+    def __build_cpdindex__(self, msmode):
         '''
         indexed Compound list, to speed up m/z matching.
         Limited to MASS_RANGE (default 50 ~ 2000 dalton).
@@ -368,19 +560,19 @@ class DataMeetModel:
                         IonCpdTree[ int(mass) ].append( (c, ion, mass) )
                 
         # tree: (compoundID, ion, mass), ion=match form; mass is theoretical
-        self.IonCpdTree = IonCpdTree
+        return IonCpdTree
 
 
-    def build_rowindex(self, ListOfMassFeatures):
+    def __build_rowindex__(self, ListOfMassFeatures):
         '''
         Index list of MassFeatures by row# in input data
         '''
-        self.rowDict = {}
-        for M in ListOfMassFeatures:
-            self.rowDict[M.row_number] = M
+        rowDict = {}
+        for M in ListOfMassFeatures: rowDict[M.row_number] = M
+        return rowDict
 
 
-    def match_all_to_all(self):
+    def __match_all_to_all__(self):
         '''
         
         Major change of data structure here in version 2.
@@ -393,23 +585,23 @@ class DataMeetModel:
         
         
         '''
-        self.match_to_mzFeatures()
-        self.index_Compounds_to_mzFeatures()
-        self.compound_to_EmpiricalCompounds()
+        self.__match_to_mzFeatures__()
+        self.cpd2mzFeatures = self.index_Compounds_to_mzFeatures()
+        return self.compound_to_EmpiricalCompounds()
         
 
-    def match_to_mzFeatures(self):
+    def __match_to_mzFeatures__(self):
         '''
         Fill mzFeatures with matched ions and compounds
         '''
         for M in self.data.ListOfMassFeatures:
-            M.matched_Ions = self.match_mz_ion(M.mz, self.IonCpdTree)
+            M.matched_Ions = self.__match_mz_ion__(M.mz, self.IonCpdTree)
         
         
     def index_Compounds_to_mzFeatures(self):
         '''
         compound ID - mzFeatures
-        run after self.match_to_mzFeatures()
+        run after self.__match_to_mzFeatures__()
         L: (compoundID, ion, mass)
         cpd2mzFeatures[compoundID] = [(ion, mass, mzFeature), ...]
         '''
@@ -421,10 +613,11 @@ class DataMeetModel:
                 else:
                     cpd2mzFeatures[L[0]] = [(L[1], L[2], M)]
         
-        self.cpd2mzFeatures = cpd2mzFeatures
         print ("Got %d cpd2mzFeatures" %len(cpd2mzFeatures))
+        return cpd2mzFeatures
         
-    def match_mz_ion(self, mz, IonCpdTree):
+        
+    def __match_mz_ion__(self, mz, IonCpdTree):
         '''
         L: (compoundID, ion, mass)
         return ions matched to m/z
@@ -439,28 +632,32 @@ class DataMeetModel:
                     
         return matched
 
-    def compound_to_EmpiricalCompounds(self, rtime_tolerance = 60):
+    def compound_to_EmpiricalCompounds(self):
         '''
-        
+        EmpiricalCompounds are constructed in this function.
+        First splitting features matching to same compound by retention time;
+        then merging those matched to same m/z features.
         run after self.index_Compounds_to_mzFeatures()
         '''
         ListOfEmpiricalCompounds = []
         for k,v in self.cpd2mzFeatures.items():
-            ListOfEmpiricalCompounds += self.split_Compound(k, v, rtime_tolerance)
+            ListOfEmpiricalCompounds += self.__split_Compound__(k, v, self.rtime_tolerance)      # getting inital instances of EmpiricalCompound
             
         print ("Got %d ListOfEmpiricalCompounds" %len(ListOfEmpiricalCompounds))
-        # merge compounds that are not distinguished by analytical platform, e.g. isobaric
-        self.merge_EmpiricalCompounds( ListOfEmpiricalCompounds )
-        print ("Got %d merged ListOfEmpiricalCompounds" %len(self.ListOfEmpiricalCompounds))
         
-    def split_Compound(self, compoundID, list_match_mzFeatures, rtime_tolerance):
+        # merge compounds that are not distinguished by analytical platform, e.g. isobaric
+        return self.__merge_EmpiricalCompounds__( ListOfEmpiricalCompounds )
+        
+        
+    def __split_Compound__(self, compoundID, list_match_mzFeatures, rtime_tolerance):
         '''
         Determine EmpiricalCompounds among the ions matched to a Compound;
-        return list of EmpiricalCompounds
+        return list of EmpiricalCompounds (not final, but initiated here).
         
         The retention time is grouped by tolerance value; 
-        This method should be updated in the future
+        This method should be updated in the future.
         
+        input data format:
         cpd2mzFeatures[compoundID] = list_match_mzFeatures = [(ion, mass, mzFeature), ...]
         
         '''
@@ -481,9 +678,12 @@ class DataMeetModel:
         return ECompounds
         
     
-    def merge_EmpiricalCompounds(self, ListOfEmpiricalCompounds):
+    def __merge_EmpiricalCompounds__(self, ListOfEmpiricalCompounds):
         '''
         If ion/mzFeatures are the same, merge EmpiricalCompounds
+        EmpiricalCompounds.join() adds Compounds
+        
+        Because EmpiricalCompounds.str_row_ion uses mzFeatures sorted by row_number, this is 
         '''
         mydict = {}
         for L in ListOfEmpiricalCompounds:
@@ -491,11 +691,11 @@ class DataMeetModel:
                 mydict[ L.str_row_ion ].join(L)
             else:
                 mydict[ L.str_row_ion ]= L
-            
-        self.ListOfEmpiricalCompounds = mydict.values()
+        
+        print ("Got %d merged ListOfEmpiricalCompounds" %len(mydict))
+        return mydict.values()
 
-
-    def make_rowindex_to_EmpiricalCompounds(self):
+    def __make_rowindex_to_EmpiricalCompounds__(self):
         mydict = {}
         for E in self.ListOfEmpiricalCompounds:
             for m in E.massfeature_rows:
@@ -506,24 +706,7 @@ class DataMeetModel:
                     
         return mydict
 
-
-    def make_rowindex_to_Compounds(self):
-        '''
-        mapping through ListOfEmpiricalCompounds. This is a shortcut. Use with caution.
-        returned dict may be redundant.
-        '''
-        mydict = {}
-        for E in self.ListOfEmpiricalCompounds:
-            for m in E.massfeature_rows:
-                if mydict.has_key(m):
-                    mydict[m] += E.compounds
-                else:
-                    mydict[m] = E.compounds
-                    
-        return mydict
-
-
-    def index_Compounds_to_EmpiricalCompounds(self):
+    def __index_Compounds_to_EmpiricalCompounds__(self):
         '''
         Make dict cpd - EmpiricalCompounds
         '''
@@ -538,38 +721,38 @@ class DataMeetModel:
         return mydict
         
 
-    def compile_significant_EmpiricalCompounds(self, significant_features):
+    def batch_rowindex_EmpCpd_Cpd(self, list_features):
         '''
-        This function will be used to map for permutation lists too.
+        Batch matching from row feature to Ecpds; Use trio data structure, (M.row_number, EmpiricalCompounds, Cpd).
+        Will be used to map for both sig list and permutation lists.
         '''
-        EmCpds = []
-        for f in significant_features:
-            EmCpds += self.rowindex_to_EmpiricalCompounds.get(f, [])
-        return set(EmCpds)
+        new = []
+        for f in list_features:
+            for E in self.rowindex_to_EmpiricalCompounds.get(f, []):
+                for cpd in E.compounds:
+                    new.append((f, E, cpd))
+            
+        return new
+
+            
+    def get_ListOfEmpiricalCompounds(self):
+        '''
+        Collect EmpiricalCompounds.
+        Initiate EmpCpd attributes here.
+        '''
+        ListOfEmpiricalCompounds, ii = [], 1
+        for EmpCpd in self.__match_all_to_all__():
+            EmpCpd.evaluate()
+            EmpCpd.EID = 'E' + str(ii)
+            EmpCpd.get_mzFeature_of_highest_statistic( self.rowDict )
+            ii += 1
+            if self.data.paradict['force_primary_ion']:
+                if EmpCpd.primary_ion_present:
+                    ListOfEmpiricalCompounds.append(EmpCpd)
+            else:
+                ListOfEmpiricalCompounds.append(EmpCpd)
         
+        print ("Got %d final ListOfEmpiricalCompounds" %len(ListOfEmpiricalCompounds))
+        return ListOfEmpiricalCompounds
 
-    def export_userData(self, outfile):
-        '''
-        to do
         
-        Should add this function to write out user data with row_numbers,
-        to help users to track data.
-        
-        '''
-        with open(outfile, 'w') as O:
-            O.write('\n'.join([ 
-                    ]))
-
-
-
-
-
-
-
-
-
-
-
-
-
-

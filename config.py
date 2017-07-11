@@ -14,10 +14,13 @@
 '''
 configuration and utility functions of mummichog
 @author: Shuzhao Li
+
+will separate adducts, etc.
+
+
 '''
 
-LAST_Hg_TIP = ''
-VERSION = '2.0-dev' + LAST_Hg_TIP
+VERSION = '2.0-alpha-1-20170910' 
 RELEASE = False
 USE_DEBUG = False
 
@@ -27,8 +30,10 @@ import numpy as np
 
 
 SEARCH_STEPS = 4
+MODULE_SIZE_LIMIT = 200
 SIGNIFICANCE_CUTOFF = 0.05
 MASS_RANGE = (50, 2000)
+RETENTION_TIME_TOLERANCE_FRAC = 0.01    # fraction of total retention time
 
 #TOTAL_CPDS_NUM = 4650   # no use for now
 PROTON = 1.00727646677
@@ -72,6 +77,9 @@ def mz_tolerance(mz, mode):
     were based on instrumentation in DPJ lab.
     Please verify or replace them before using on your own data.
     It's better to use a fixed value, e.g. 10 ppm, in case of uncertainty.
+    
+    will use flat ppm, not using this function for ------
+    
     '''
     try:
         mode = int(mode)
@@ -89,7 +97,7 @@ def mz_tolerance(mz, mode):
         else:
             return 0.000010*mz
   
-
+primary_ions = ['M+H[1+]', 'M+Na[1+]', 'M-H2O+H[1+]', 'M-H[-]', 'M-2H[2-]', 'M-H2O-H[-]']
 
 wanted_adduct_list = {
     'pos_default': ['M[1+]', 'M+H[1+]', 'M+2H[2+]', 'M(C13)+H[1+]', 'M(C13)+2H[2+]', 

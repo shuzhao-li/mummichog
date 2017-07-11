@@ -91,6 +91,8 @@ def compute_adducts(mw, PROTON):
     return mydict
 
 # below is a temporary hack; will update
+# Main issue is chemical formula, which is not included now, and the adducts should be dependent on chemical formula
+
 >>> from JSON_metabolicModels import metabolicModels
 >>> metabolicModels.keys()
 ['human_model_mfn']
@@ -186,13 +188,20 @@ class metabolicNetwork:
         MetabolicModel['Compounds'] are subset of cpds in network/pathways with mw.
         Not all in total_cpd_list has mw.
         
+        MetabolicModel needs to have the dicts as below
+        
         '''
         #print_and_loginfo( "Loading metabolic network %s..." %MetabolicModel.version ) # version from metabolic model
         
         self.MetabolicModel = MetabolicModel
         self.network = self.build_network(MetabolicModel['cpd_edges'])
+        
+        self.version = MetabolicModel['version']
         self.Compounds = MetabolicModel['Compounds']
         self.metabolic_pathways = MetabolicModel['metabolic_pathways']
+        self.dict_cpds_def = MetabolicModel['dict_cpds_def']
+        self.cpd2pathways = MetabolicModel['cpd2pathways']
+        self.edge2enzyme = MetabolicModel['edge2enzyme']
         self.total_cpd_list = self.network.nodes()
         
         
@@ -204,9 +213,6 @@ class metabolicNetwork:
         pass
  
 
-
-
-
 class Mmodule:
     '''
     Metabolites by their connection in metabolic network.
@@ -214,24 +220,27 @@ class Mmodule:
     the background of reference hsanet.
     
     
-    version 2:
-    changing TF to mixedNetwork
-    
+    need to record sig EmpCpds
     
     '''
-    def __init__(self, network, subgraph, seed_cpds, mixedNetwork):
+    def __init__(self, network, subgraph, TrioList):
+        '''
+        TrioList (seeds) format: [(M.row_number, EmpiricalCompounds, Cpd), ...]
+        to keep tracking of where the EmpCpd came from (mzFeature).
+        
+        '''
         self.network = network
         self.num_ref_edges = self.network.number_of_edges()
-        self.num_ref_nodes = self.network.number_of_nodes()
+        #self.num_ref_nodes = self.network.number_of_nodes()
         self.graph = subgraph
+        
+        seed_cpds = [x[2] for x in TrioList]
         self.shave(seed_cpds)
         self.nodestr = self.make_nodestr()
-        
-        self.total_number_EmpiricalCompounds = len(mixedNetwork.ListOfEmpiricalCompounds)
-        
-        self.A = self.activity_score(seed_cpds, mixedNetwork)
+        self.N_seeds = len(seed_cpds)
+        self.A = self.activity_score(seed_cpds, self.get_num_EmpCpd(TrioList))
     
-    def activity_score(self, seed_cpds, mixedNetwork):
+    def activity_score(self, seed_cpds, num_EmpCpd):
         '''
         A * (Ns/Nm)
         A = Newman-Girvan modularity score
@@ -241,27 +250,26 @@ class Mmodule:
         this normalization factor holds the same in permutations and can be left out.
         
         To reduce bias towards larger modules in Q:
-        np.sqrt(self.num_ref_nodes/Nm) * 
+        np.sqrt(len(seed_cpds)/Nm) * 
         
-        
-        # last version:
-        ens=[]
-        for c in Ns:
-            ens.append(TF.network.theoretical2empirical[c][0])
-        Ns = min(len(ens), TF.count_cpd2mz(ens))
-        
-        
+        Ns is now controlled by number of empiricalCompounds
         '''
             
-        Ns = len([x for x in self.graph.nodes() if x in seed_cpds])
-        #
-        # will need check if Ns > number of empiricalCompounds
-        #
-        
+        #Ns = len([x for x in self.graph.nodes() if x in seed_cpds])
+        Ns = num_EmpCpd
         Nm = float(self.graph.number_of_nodes())
-        
         self.compute_modularity()
-        return np.sqrt(self.total_number_EmpiricalCompounds/Nm) *self.Q * (Ns/Nm) if Nm>0 else 0
+        return np.sqrt(self.N_seeds/Nm) *self.Q * (Ns/Nm) if Nm > 0 else 0
+        
+        
+    def get_num_EmpCpd(self, TrioList):
+        new = []
+        subgraph_nodes = self.graph.nodes()
+        for x in TrioList:
+            if x[2] in subgraph_nodes:
+                new.append(x[1])
+                
+        return len(set(new))
         
         
     def compute_modularity(self):
@@ -311,16 +319,6 @@ class Mmodule:
         Nodes = self.graph.nodes()
         Nodes.sort()
         return ''.join(Nodes)
-
-    def make_sif_str(self):
-        s = ''
-        for e in self.graph.edges(): s += e[0] + ' interact ' + e[1] + '\n'
-        return s
-        
-    def export_sif(self, filename="mummichog_exportx.sif"):
-        out = open(filename, 'w')
-        out.write(self.make_sif_str())
-        out.close()
 
     def export_network_txt(self, met_model, filename):
         '''

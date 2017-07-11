@@ -1,6 +1,6 @@
 # specific for mummichog;
 # js libraries linked from web
-# last update: 2015-04-23, Shuzhao
+# last update: 2017-07-09, Shuzhao Li
 
 
 HTML_HEAD = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> 
@@ -13,8 +13,9 @@ HTML_HEAD = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "h
         body {width: 960px; padding: 10px; }
         
         div.colorbar {margin-bottom: 7px}
-        div.networkvisual { margin: auto; height: 600px; width: 960px; overflow: auto !important;
-            }
+        div.networkvisual { margin: auto; height: 600px; width: 960px; overflow: auto !important;}
+        div.svg2 { margin: auto; height: 600px; width: 960px; overflow: auto !important;}
+
         div.stats {margin-top: 10; font-size:0.7em; color:#888;}
 
         div.moduleline{font-size: 0.9em; font-weight: bold;
@@ -41,13 +42,17 @@ HTML_HEAD = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "h
             text-align: left;
             padding:5px;
         }
-         
+        
+        tr:nth-child(even) {background-color: #f2f2f2}
+        tr:hover {background-color: #f5f5f5}
+        
         td {
             font-family: Verdana, Arial, sans-serif;
             color: black;
             font-size:0.7em;
             margin:10px;
             margin-top:0px;
+            padding: 5px;
         }
         
         .node {
@@ -63,8 +68,9 @@ HTML_HEAD = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "h
         </style> 
         <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
         <script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js" charset="utf-8"></script>
-        <script src="http://cytoscape.github.io/cytoscape.js/api/cytoscape.js-latest/cytoscape.min.js" charset="utf-8"></script>
-        
+        <script src="http://mummichog.org/download/cytoscape.min.js" charset="utf-8"></script>
+        <script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-spread/1.0.9/cytoscape-spread.js"></script>        
+
         </head> 
         <body> 
         """
@@ -101,7 +107,13 @@ javascript_END = """
         // support cytoscape.js  
 		function cyto_draw_figure(nodes, links, node_size) {  
 
-				$('#networkvisual').cytoscape({
+                    var svg = document.createElement('div');
+                    svg.setAttribute("id","svg2");
+                    svg.setAttribute("class","svg2");
+                    var nw = document.getElementById("networkvisual");
+                    nw.appendChild(svg);
+
+				$('#svg2').cytoscape({
 						style: cytoscape.stylesheet()
 						.selector('node')
 						  .css({
@@ -127,10 +139,11 @@ javascript_END = """
 						  }),
   
 					  layout: {
-						name: 'cose',
+						name: 'spread',
+						minDist: 40,
 						directed: true,
 						padding: 10,
-						fit: false,
+						//fit: false,
 					  },
 					  
 					  elements: {
@@ -149,7 +162,14 @@ javascript_END = """
 
         // support d3.js  
         function d3_draw_figure(nodes, links, node_size) {
-            var svg = d3.select("#networkvisual").append("svg").attr("id", "svg_networkvisual").attr("width", w).attr("height", h);
+
+            var svg = document.createElement('div');
+            svg.setAttribute("id","svg2");
+            svg.setAttribute("class","svg2");
+            var nw = document.getElementById("networkvisual");
+            nw.appendChild(svg);
+
+            var svg = d3.select("#svg2").append("svg").attr("id", "svg_networkvisual").attr("width", w).attr("height", h);
             var force = d3.layout.force()
                       .charge(-480)
                       .linkDistance(80)
@@ -198,19 +218,31 @@ javascript_END = """
         }
     
     
+        function inv(i) {
+           if (i==0)
+              return 0
+           else if (i==1)
+              return 2
+           else
+              return 1
+}
+
     	// added support of two styles
         function updateDrawing() {
             var idx = document.getElementById("nmodule_select").selectedIndex;
             var ndx = document.getElementById("nsize_select").selectedIndex;
             var vdx = document.getElementById("vstyle_select").selectedIndex;
             
-            d3.select("#svg_networkvisual").remove();
-            var cy = $('#networkvisual').cytoscape('get');
-            cy.remove( cy.elements() );
+            //d3.select("#svg_networkvisual").remove();
+            var svg = document.getElementById("svg2");
+	    svg.parentNode.removeChild(svg);
+
+            //var cy = $('#networkvisual').cytoscape('get');
+            //cy.remove( cy.elements() );
             
             // 0 for cytoscape style, drag; 1 for d3 style, force
             if (vdx == 0) {
-            cyto_draw_figure(cytonodes[idx], cytoedges[idx], node_sizes[ndx]);
+            cyto_draw_figure(cytonodes[idx], cytoedges[idx], node_sizes[inv(ndx)]);
             
     		var cy = $('#networkvisual').cytoscape('get');
     		cy.panBy({ x: 0, y: -200 });
