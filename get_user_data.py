@@ -450,8 +450,11 @@ class InputUserData:
             myaxes[ii].spines['top'].set_visible(True)
             myaxes[ii].yaxis.set_ticks_position('both')
             myaxes[ii].xaxis.set_ticks_position('both')
+            
             myaxes[ii].set_xlabel(X_label[ii])
             myaxes[ii].set_ylabel(Y_label)
+            # rotate to avoid overlap xticklabels
+            plt.setp(myaxes[ii].get_xticklabels(), rotation=30, horizontalalignment='right')
             
         #plt.title("Feature significance")
         plt.tight_layout()

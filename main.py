@@ -37,7 +37,7 @@ from reporting import *
 if __name__ == '__main__':
 
     print fishlogo
-    print ('### Development version, testing')   # "mummichog version %s \n" %VERSION
+    print ( "mummichog version %s \n" %VERSION )
     optdict = dispatcher()
 
     

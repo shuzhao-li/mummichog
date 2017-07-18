@@ -127,15 +127,10 @@ class PathwayAnalysis:
             random_Trios = self.mixedNetwork.batch_rowindex_EmpCpd_Cpd( random.sample(self.mixedNetwork.mzrows, N) )
             query_EmpiricalCompounds = set([x[1] for x in random_Trios])
             self.permutation_record += (self.__calculate_p_ermutation_value__(query_EmpiricalCompounds, pathways))
-
-        # now do Gamma fit
+        
         print_and_loginfo("\nPathway background is estimated on %d random pathway values" 
                           %len(self.permutation_record))
         
-        #
-        # Because of the long tail of p=1, Gamma fitting is better done on the variable part of curve
-        # also should be more accurate when done at log scale
-        #self.gamma = stats.gamma.fit(1-np.array(self.permutation_record))
 
 
     def __calculate_p_ermutation_value__(self, query_EmpiricalCompounds, pathways):
@@ -172,8 +167,13 @@ class PathwayAnalysis:
         self.do_permutations(pathways, self.paradict['permutation'])
         
         if self.paradict['modeling'] == 'gamma':
+            #vector_to_fit = [-np.log10(x) for x in self.permutation_record if x < 1]
+            vector_to_fit = -np.log10(np.array(self.permutation_record))
+            self.gamma = stats.gamma.fit(vector_to_fit)
+            a, loc, scale = self.gamma
+            
             for P in pathways: 
-                P.adjusted_p = self.__calculate_gamma_p__(P.p_EASE)
+                P.adjusted_p = self.__calculate_gamma_p__(a, loc, scale, P.p_EASE)
         else:
             for P in pathways: P.adjusted_p = self.__calculate_p__(P.p_EASE, self.permutation_record)
         return pathways
@@ -188,9 +188,11 @@ class PathwayAnalysis:
         D = len(record) + 1.0
         return (total_scores.index(x)+1)/D
     
-    def __calculate_gamma_p__(self, x):
-        a, loc, scale = self.gamma
-        return 1 - stats.gamma.cdf(1-x, a, loc, scale)
+    def __calculate_gamma_p__(self, a, loc, scale, x):
+        '''
+        Use -log10 scale for model fitting
+        '''
+        return 1 - stats.gamma.cdf(-np.log10(x), a, loc, scale)
     
     
     def cpd_enrich_test(self):
@@ -204,6 +206,9 @@ class PathwayAnalysis:
         query size is now counted by EmpiricalCompounds.
         adjusted_p should be model p-value, not fdr.
         This returns a list of Pathway instances, with p-values.
+        
+                        P.p_EASE = stats.fisher_exact([[max(0, overlap_size - 1), query_set_size - overlap_size],
+                                   [ecpd_num - overlap_size + 1, negneg]], 'greater')[1]
         '''
         FET_tested_pathways = []
         qset = self.significant_EmpiricalCompounds
@@ -223,8 +228,10 @@ class PathwayAnalysis:
                 P.p_FET = stats.fisher_exact([[overlap_size, query_set_size - overlap_size],
                                    [ecpd_num - overlap_size, negneg]], 'greater')[1]
                 # EASE score as in Hosack et al 2003
-                P.p_EASE = stats.fisher_exact([[max(0, overlap_size - 1), query_set_size - overlap_size],
-                                   [ecpd_num - overlap_size + 1, negneg]], 'greater')[1]
+                # taking out EASE, as the new approach of EmpiricalCompound is quite stringent already
+                P.p_EASE = P.p_FET
+                
+
             else:
                 P.p_FET = P.p_EASE = 1
                 
@@ -607,29 +614,35 @@ class ActivityNetwork:
         self.activity_network = self.build_activity_network(nodes)
         
 
-    def build_activity_network(self, nodes, cutoff_ave_conn = 0.3):
+    def build_activity_network(self, nodes, cutoff_ave_conn = 0.5):
         '''
         Get a network with .
-        nx.average_node_connectivity(G)
+        nx.average_node_connectivity(G) is too slow; use self.get_ave_connections()
+        
+        
+        
         '''
         
         an = nx.subgraph(self.mixedNetwork.model.network, nodes)
-        conn = nx.average_node_connectivity(an)
+        conn = self.get_ave_connections(an)
         
-        if conn > cutoff_ave_conn:
+        if an.number_of_nodes() > MODULE_SIZE_LIMIT or conn > cutoff_ave_conn:
+            print_and_loginfo("\nActivity network was connected in 1 step.")
             return an
         
         else:   # expand 1 or 2 steps
             edges = nx.edges(self.mixedNetwork.model.network, nodes)
             new_network = nx.from_edgelist(edges)
-            conn = nx.average_node_connectivity(new_network)
-            if conn > cutoff_ave_conn:
+            conn = self.get_ave_connections(new_network)
+            if an.number_of_nodes() > MODULE_SIZE_LIMIT or conn > cutoff_ave_conn:
+                print_and_loginfo("\nActivity network was connected in 2 steps.")
                 return new_network
             else:
                 edges = nx.edges(self.mixedNetwork.model.network, new_network.nodes())
                 new_network = nx.from_edgelist(edges)
-                conn = nx.average_node_connectivity(new_network)
+                conn = self.get_ave_connections(new_network)
                 if conn > cutoff_ave_conn:
+                    print_and_loginfo("\nActivity network was connected in 3 steps.")
                     return new_network
                 else:
                     return an
@@ -637,8 +650,11 @@ class ActivityNetwork:
     def export_network_txt(self, met_model, filename):
         s = 'SOURCE\tTARGET\tENZYMES\n'
         for e in self.activity_network.edges():
-            s += e[0] + '\t' + e[1] + '\t' + met_model.edge2enzyme.get(e, '') + '\n'
+            s += e[0] + '\t' + e[1] + '\t' + met_model.edge2enzyme.get(','.join(sorted(e)), '') + '\n'
         
         out = open(filename, 'w')
         out.write(s)
         out.close()
+
+    def get_ave_connections(self, N):
+        return N.number_of_edges()/float(N.number_of_nodes())

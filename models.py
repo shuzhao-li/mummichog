@@ -228,10 +228,11 @@ class Mmodule:
         TrioList (seeds) format: [(M.row_number, EmpiricalCompounds, Cpd), ...]
         to keep tracking of where the EmpCpd came from (mzFeature).
         
+        network is the total parent metabolic network
         '''
         self.network = network
         self.num_ref_edges = self.network.number_of_edges()
-        #self.num_ref_nodes = self.network.number_of_nodes()
+        self.num_ref_nodes = self.network.number_of_nodes()
         self.graph = subgraph
         
         seed_cpds = [x[2] for x in TrioList]
@@ -247,7 +248,8 @@ class Mmodule:
         Ns = number of input cpds in module M
         Nm = number of total cpds in M
         Ns/Nm can be corrected as (Ns/total input size)/(Nm/network size), however,
-        this normalization factor holds the same in permutations and can be left out.
+        this normalization factor holds the same in permutations. 
+        Use 100 here for network size/total input size.
         
         To reduce bias towards larger modules in Q:
         np.sqrt(len(seed_cpds)/Nm) * 
@@ -258,8 +260,11 @@ class Mmodule:
         #Ns = len([x for x in self.graph.nodes() if x in seed_cpds])
         Ns = num_EmpCpd
         Nm = float(self.graph.number_of_nodes())
-        self.compute_modularity()
-        return np.sqrt(self.N_seeds/Nm) *self.Q * (Ns/Nm) if Nm > 0 else 0
+        if Nm > 0:
+            self.compute_modularity()
+            return np.sqrt(self.N_seeds/Nm) *self.Q * (Ns/Nm) * 100
+        else:
+            return 0
         
         
     def get_num_EmpCpd(self, TrioList):
@@ -323,10 +328,11 @@ class Mmodule:
     def export_network_txt(self, met_model, filename):
         '''
         To use .txt for Cytoscape 3, no need for .sif any more.
+        Edges are strings now as switching to JSON compatible.
         '''
         s = 'SOURCE\tTARGET\tENZYMES\n'
         for e in self.graph.edges():
-            s += e[0] + '\t' + e[1] + '\t' + met_model.edge2enzyme.get(e, '') + '\n'
+            s += e[0] + '\t' + e[1] + '\t' + met_model.edge2enzyme.get(','.join(sorted(e)), '') + '\n'
         
         out = open(filename, 'w')
         out.write(s)

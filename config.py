@@ -20,7 +20,7 @@ will separate adducts, etc.
 
 '''
 
-VERSION = '2.0-alpha-1-20170910' 
+VERSION = '2.0.2-beta-20170717' 
 RELEASE = False
 USE_DEBUG = False
 
@@ -30,12 +30,12 @@ import numpy as np
 
 
 SEARCH_STEPS = 4
-MODULE_SIZE_LIMIT = 200
+MODULE_SIZE_LIMIT = 100
 SIGNIFICANCE_CUTOFF = 0.05
 MASS_RANGE = (50, 2000)
 RETENTION_TIME_TOLERANCE_FRAC = 0.01    # fraction of total retention time
 
-#TOTAL_CPDS_NUM = 4650   # no use for now
+
 PROTON = 1.00727646677
 
 
@@ -138,7 +138,7 @@ def adduct_function(mw, mode):
     
     Paul Benton sent a list used in XCMSonline.
     
-    
+    This is to be replaced by pre-computed tables based on chemical formula.
     
     '''
     if mode == 'dpj_positive':
