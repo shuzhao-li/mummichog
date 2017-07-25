@@ -30,26 +30,17 @@ from functional_analysis import *
 from reporting import *
 
 
-#
-# -----------------------------------------------------------------------------
-#
-
-if __name__ == '__main__':
-
+def main():
+    
     print fishlogo
     print ( "mummichog version %s \n" %VERSION )
     optdict = dispatcher()
 
-    
-
     print_and_loginfo("Started @ %s\n" %time.asctime())
-    
-    
     userData = InputUserData(optdict)
     
     # can specify which model in metabolicModels[]
     theoreticalModel = metabolicNetwork(metabolicModels[ 'human_model_mfn' ])
-    
     mixedNetwork = DataMeetModel(theoreticalModel, userData)
 
     # getting a list of Pathway instances, with p-values, in PA.resultListOfPathways
@@ -63,19 +54,23 @@ if __name__ == '__main__':
     # do activity network
     AN = ActivityNetwork( mixedNetwork, set(PA.collect_hit_Trios() + MA.collect_hit_Trios()) )
     
-    
     Local = LocalExporting(mixedNetwork, PA, MA, AN)
     Local.run()
     
     Web = WebReporting(Local, PA, MA, AN)
     Web.run()
     
-    
-    # else
-    # Targeted analysis
-    # may not necessary to switch here - use same flow as above?
-    
-    
-    
     print_and_loginfo("\nFinished @ %s\n" %time.asctime())
+
+
+
+
+#
+# -----------------------------------------------------------------------------
+#
+
+if __name__ == '__main__':
+
+    main()
+
 

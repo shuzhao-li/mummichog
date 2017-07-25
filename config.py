@@ -20,7 +20,7 @@ will separate adducts, etc.
 
 '''
 
-VERSION = '2.0.2-beta-20170717' 
+VERSION = '2.0.4-beta-20170719' 
 RELEASE = False
 USE_DEBUG = False
 
