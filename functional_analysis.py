@@ -20,7 +20,7 @@ Major change from version 1 to version 2: using EmpiricalCompound in place of cp
 Separating I/O, to be used for both web apps and desktop apps
 
 
-@author: Shuzhao Li
+@author: Shuzhao Li, Andrei Todor
 '''
 
 import logging, random, itertools
@@ -597,6 +597,8 @@ class ActivityNetwork:
     '''
     Tally cpds responsible for significant pathways and modules,
     and build an acitvity network to represent top story in the data.
+    Remove singletons in network. Try no more than 3 steps. AN can get too big or too small.
+    
     '''
     def __init__(self, mixedNetwork, hit_Trios):
         '''
@@ -614,33 +616,30 @@ class ActivityNetwork:
         self.activity_network = self.build_activity_network(nodes)
         
 
-    def build_activity_network(self, nodes, cutoff_ave_conn = 0.5):
+    def build_activity_network(self, nodes, cutoff_ave_conn = 0.5, expected_size = 10):
         '''
-        Get a network with .
-        nx.average_node_connectivity(G) is too slow; use self.get_ave_connections()
-        
-        
-        
+        Get a network with good connections in no more than 3 steps.
+        No modularity requirement for 1 step connected nodes.
         '''
         
         an = nx.subgraph(self.mixedNetwork.model.network, nodes)
-        conn = self.get_ave_connections(an)
+        sub1 = self.__get_largest_subgraph__(an)
         
-        if an.number_of_nodes() > MODULE_SIZE_LIMIT or conn > cutoff_ave_conn:
+        if sub1.number_of_nodes() > expected_size:
             print_and_loginfo("\nActivity network was connected in 1 step.")
-            return an
+            return sub1
         
         else:   # expand 1 or 2 steps
             edges = nx.edges(self.mixedNetwork.model.network, nodes)
-            new_network = nx.from_edgelist(edges)
-            conn = self.get_ave_connections(new_network)
+            new_network = self.__get_largest_subgraph__( nx.from_edgelist(edges) )
+            conn = self.__get_ave_connections__(new_network)
             if an.number_of_nodes() > MODULE_SIZE_LIMIT or conn > cutoff_ave_conn:
                 print_and_loginfo("\nActivity network was connected in 2 steps.")
                 return new_network
             else:
                 edges = nx.edges(self.mixedNetwork.model.network, new_network.nodes())
-                new_network = nx.from_edgelist(edges)
-                conn = self.get_ave_connections(new_network)
+                new_network = self.__get_largest_subgraph__( nx.from_edgelist(edges) )
+                conn = self.__get_ave_connections__(new_network)
                 if conn > cutoff_ave_conn:
                     print_and_loginfo("\nActivity network was connected in 3 steps.")
                     return new_network
@@ -655,6 +654,20 @@ class ActivityNetwork:
         out = open(filename, 'w')
         out.write(s)
         out.close()
-
-    def get_ave_connections(self, N):
-        return N.number_of_edges()/float(N.number_of_nodes())
+        
+    def __get_largest_subgraph__(self, an):
+        '''
+        connected_component_subgraphs likely to return sorted subgraphs. Just to be sure here.
+        '''
+        connected = [(len(x),x) for x in nx.connected_component_subgraphs(an)]
+        connected.sort(reverse=True)
+        return connected[0][1]
+        
+    def __get_ave_connections__(self, N):
+        '''
+        nx.average_node_connectivity(G) is too slow; use self.__get_ave_connections__()
+        '''
+        try:                #Avoid ZeroDivisionError
+            return N.number_of_edges()/float(N.number_of_nodes())
+        except:
+            return 0

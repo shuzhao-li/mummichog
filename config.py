@@ -1,4 +1,4 @@
-# Copyright (c) 2010-2015 Shuzhao Li.
+# Copyright (c) 2010-2018 Shuzhao Li.
 # All rights reserved.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
@@ -15,12 +15,9 @@
 configuration and utility functions of mummichog
 @author: Shuzhao Li
 
-will separate adducts, etc.
-
-
 '''
 
-VERSION = '2.0.4-beta-20170719' 
+VERSION = '2.0.5-beta-20180306' 
 RELEASE = False
 USE_DEBUG = False
 
@@ -33,6 +30,8 @@ SEARCH_STEPS = 4
 MODULE_SIZE_LIMIT = 100
 SIGNIFICANCE_CUTOFF = 0.05
 MASS_RANGE = (50, 2000)
+
+
 RETENTION_TIME_TOLERANCE_FRAC = 0.01    # fraction of total retention time
 
 

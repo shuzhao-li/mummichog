@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2010-2017 Shuzhao Li.
+# Copyright (c) 2010-2018 Shuzhao Li.
 # All rights reserved.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
@@ -40,7 +40,11 @@ def main():
     userData = InputUserData(optdict)
     
     # can specify which model in metabolicModels[]
+    
     theoreticalModel = metabolicNetwork(metabolicModels[ 'human_model_mfn' ])
+    
+    #theoreticalModel = metabolicNetwork(metabolicModels[ 'recon2' ])
+    
     mixedNetwork = DataMeetModel(theoreticalModel, userData)
 
     # getting a list of Pathway instances, with p-values, in PA.resultListOfPathways

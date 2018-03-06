@@ -47,18 +47,26 @@ def print_and_loginfo(s):
 def cli_options(opts):
     '''
     Ongoing work in version 2, making some options obsolete.
+    
+    obsolete parameters:
+    'analysis': 'total',
+    'targeted': False,
+    'evidence': 3,
+    'visualization': 2,
+    
     '''
     time_stamp = str(time.time())
-    optdict = {'analysis': 'total',
+    
+    optdict = {
                'cutoff': 0,
-               'targeted': False,
+               
                'network': 'human_mfn',
                'modeling': None,
-               'evidence': 3,
+               
                'mode': 'pos_default',
                'instrument': 'unspecified',
                'force_primary_ion': True,
-               'visualization': 2,
+               
                'workdir': '',
                'input': '',
                'reference': '',
@@ -69,7 +77,11 @@ def cli_options(opts):
                }
     booleandict = {'T': True, 'F': False, 1: True, 0: False, 
                    'True': True, 'False': False, 'TRUE': True, 'FALSE': False, 'true': True, 'false': False,
-                   }
+                    }
+    modedict = {'default': 'pos_default', 'pos': 'pos_default', 'pos_default': 'pos_default',
+                'dpj': 'dpj_positive', 'positive': 'generic_positive', 'Positive': 'generic_positive',
+                'negative': 'negative', 'Negative': 'negative',
+                    }
     # update default from user argument
     for o, a in opts:
         if o in ("-a", "--analysis"): optdict['analysis'] = a
@@ -79,7 +91,7 @@ def cli_options(opts):
         elif o in ("-z", "--force_primary_ion"): optdict['force_primary_ion'] = booleandict.get(a, True)
         elif o in ("-d", "--modeling"): optdict['modeling'] = a
         elif o in ("-e", "--evidence"): optdict['evidence'] = int(a)
-        elif o in ("-m", "--mode"): optdict['mode'] = a
+        elif o in ("-m", "--mode"): optdict['mode'] = modedict.get(a, a)
         elif o in ("-u", "--instrument"): optdict['instrument'] = a
         elif o in ("-v", "--visualization"): optdict['visualization'] = int(a)
         elif o in ("-k", "--workdir"): optdict['workdir'] = a
@@ -113,7 +125,6 @@ def dispatcher():
               containing all features with tab-delimited columns
               m/z, retention time, p-value, statistic score
         
-        -t, --targeted: set to True if using targeted metabolomics data
         -n, --network: network model to use (default human_mfn), 
               [human, human_mfn, mouse, fly, yeast]
         
@@ -121,11 +132,9 @@ def dispatcher():
         -k, --workdir: directory for all data files.
               Default is current directory.
         
-        -m, --mode: analytical mode of mass spec, [positive, negative, dpj].
-              Default is dpj, a short version of positive.
-        -u, --instrument: [5, 10, 25, FTMS, ORBITRAP].
-              Any integer is treated as ppm. Default is 10. 
-              Instrument specific functions may be implemented.
+        -m, --mode: analytical mode of mass spec, [positive, negative, pos_defult].
+              Default is pos_defult, a short version of positive.
+        -u, --instrument: Any integer, treated as ppm of instrument accuracy. Default is 10. 
               
         -p, --permutation: number of permutation to estimate null distributions.
               Default is 100.
@@ -136,8 +145,6 @@ def dispatcher():
         
         -c, --cutoff: optional cutoff p-value in user supplied statistics,
               used to select significant list of features. 
-        -e, --evidence: cutoff score for metabolite to be in activity network.
-              Default is 3.
         -d, --modeling: modeling permutation data, [no, gamma].
               Default is no.
         '''
