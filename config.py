@@ -17,7 +17,7 @@ configuration and utility functions of mummichog
 
 '''
 
-VERSION = '2.0.5-beta-20180306' 
+VERSION = '2.0.6-beta-20180309' 
 RELEASE = False
 USE_DEBUG = False
 

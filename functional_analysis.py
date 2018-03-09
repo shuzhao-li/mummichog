@@ -612,40 +612,39 @@ class ActivityNetwork:
         self.network = mixedNetwork.model.network
         
         nodes = [x[2] for x in hit_Trios]
-        
         self.activity_network = self.build_activity_network(nodes)
-        
 
     def build_activity_network(self, nodes, cutoff_ave_conn = 0.5, expected_size = 10):
         '''
         Get a network with good connections in no more than 3 steps.
         No modularity requirement for 1 step connected nodes.
         '''
-        
         an = nx.subgraph(self.mixedNetwork.model.network, nodes)
-        sub1 = self.__get_largest_subgraph__(an)
-        
-        if sub1.number_of_nodes() > expected_size:
-            print_and_loginfo("\nActivity network was connected in 1 step.")
-            return sub1
-        
-        else:   # expand 1 or 2 steps
-            edges = nx.edges(self.mixedNetwork.model.network, nodes)
-            new_network = self.__get_largest_subgraph__( nx.from_edgelist(edges) )
-            conn = self.__get_ave_connections__(new_network)
-            if an.number_of_nodes() > MODULE_SIZE_LIMIT or conn > cutoff_ave_conn:
-                print_and_loginfo("\nActivity network was connected in 2 steps.")
-                return new_network
-            else:
-                edges = nx.edges(self.mixedNetwork.model.network, new_network.nodes())
+        if nodes:
+            sub1 = self.__get_largest_subgraph__(an)
+            if sub1.number_of_nodes() > expected_size:
+                print_and_loginfo("\nActivity network was connected in 1 step.")
+                return sub1
+            
+            else:   # expand 1 or 2 steps
+                edges = nx.edges(self.mixedNetwork.model.network, nodes)
                 new_network = self.__get_largest_subgraph__( nx.from_edgelist(edges) )
                 conn = self.__get_ave_connections__(new_network)
-                if conn > cutoff_ave_conn:
-                    print_and_loginfo("\nActivity network was connected in 3 steps.")
+                if an.number_of_nodes() > MODULE_SIZE_LIMIT or conn > cutoff_ave_conn:
+                    print_and_loginfo("\nActivity network was connected in 2 steps.")
                     return new_network
                 else:
-                    return an
-    
+                    edges = nx.edges(self.mixedNetwork.model.network, new_network.nodes())
+                    new_network = self.__get_largest_subgraph__( nx.from_edgelist(edges) )
+                    conn = self.__get_ave_connections__(new_network)
+                    if conn > cutoff_ave_conn:
+                        print_and_loginfo("\nActivity network was connected in 3 steps.")
+                        return new_network
+                    else:
+                        return an
+        else:
+            return an
+        
     def export_network_txt(self, met_model, filename):
         s = 'SOURCE\tTARGET\tENZYMES\n'
         for e in self.activity_network.edges():
