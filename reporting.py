@@ -1,6 +1,3 @@
-# Copyright (c) 2010-2017 Shuzhao Li.
-# All rights reserved.
-#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 # OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -45,15 +42,10 @@ class WebReporting:
         self.MA = MA
         self.AN = AN
         
-        
-        
     def run(self):
         self.get_dict_cpd_statistic()
         self.collect_web_export_graphs()
         self.web_export()
-        
-        
-        
         
         
     def get_dict_cpd_statistic(self):
@@ -84,12 +76,8 @@ class WebReporting:
         Write HTML and javascript based report.
         The visualization section includes activity network and up to top 5 modules.
         
-        # stats +=  ' Run parameters - ' + str(self.network.paradict) 
-        
-        
         '''
-        
-        
+
         HTML = HtmlExport()
         title = 'Mummichog Report: ' + self.data.paradict['output']
         HTML.add_element(title, 'h1', '')
@@ -240,33 +228,10 @@ class WebReporting:
                 
 
 
-
-
-
-
 class LocalExporting:
     '''
-    Used to write out local data
-    
-    
-    import matplotlib
-    import matplotlib.pyplot as plt
-    import StringIO
-    import urllib, base64
-    
-    plt.plot(range(10, 20))
-    fig = plt.gcf()
-    
-    imgdata = StringIO.StringIO()
-    fig.savefig(imgdata, format='png')
-    imgdata.seek(0)  # rewind the data
-    
-    print "Content-type: image/png\n"
-    uri = 'data:image/png;base64,' + urllib.quote(base64.b64encode(imgdata.buf))
-    print '<img src = "%s"/>' % uri
-        
-    
-    
+    To write out local data
+
     '''
     def __init__(self, mixedNetwork, PA, MA, AN):
         self.mixedNetwork = mixedNetwork
@@ -607,10 +572,6 @@ class HtmlExport:
         The visualization can get a lot more complicated. Using only names for cytoscape.js for now. 
         When implementing other features, both id and name will be needed.
         
-        
-        
-        
-        
         '''
 
         cpdcolordict = self.rescale_color(dict_cpd_statistic)
@@ -656,9 +617,6 @@ class HtmlExport:
         '''
         rescale color to 0~20
         7 steps, centered at 0, +- 3 * stdev
-        
-        
-        
         '''
         stdev = np.std(dict_cpd_statistic.values())
         step = stdev
@@ -714,8 +672,6 @@ def write_yes_no_MassFeature(f):
         return "no"
 
 
-
-
 def quote(s):
     return '"'+s+'"'
 
@@ -729,7 +685,6 @@ def flatten(inlist):
 def draw_path(dotfile, pngfile):
     G=pgv.AGraph(dotfile)
     G.draw(pngfile, prog='dot')
-
 
 
 def make_color_dict(TF, zcolors):

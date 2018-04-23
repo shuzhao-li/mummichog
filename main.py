@@ -14,15 +14,15 @@
 
 '''
 mummichog 2,
-pathway and network analysis for untargeted and targeted metabolomics
+pathway and network analysis for metabolomics
 
 @author: Shuzhao Li
 
-online documentation:
-http://mummichog.org
-
-
-
+Online documentation: http://mummichog.org
+Major change in data structure from version 1. 
+Only the default metabolic model (human_model_mfn) and a worm model are ported to version 2 so far.
+This is intended to be the branch of command line version. 
+A server version is upcoming, where metabolic models are stored a separate online database.
 '''
 
 
@@ -39,11 +39,14 @@ def main():
     print_and_loginfo("Started @ %s\n" %time.asctime())
     userData = InputUserData(optdict)
     
-    # can specify which model in metabolicModels[]
-    
-    theoreticalModel = metabolicNetwork(metabolicModels[ 'human_model_mfn' ])
-    
-    #theoreticalModel = metabolicNetwork(metabolicModels[ 'recon2' ])
+    #specify which metabolic model 
+    if userData.paradict['network'] in ['human', 'hsa', 'Human', 'human_mfn', 'hsa_mfn', '']:
+        theoreticalModel = metabolicNetwork(metabolicModels[ 'human_model_mfn' ])
+    elif userData.paradict['network'] in ['worm', 'C. elegans', 'icel1273', 'Caenorhabditis elegans']:
+        theoreticalModel = metabolicNetwork(metabolicModels[ 'worm_model_icel1273' ])
+        
+    else:
+        raise KeyError( "Unsupported species/model. Pls contact author." )
     
     mixedNetwork = DataMeetModel(theoreticalModel, userData)
 

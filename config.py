@@ -1,6 +1,3 @@
-# Copyright (c) 2010-2018 Shuzhao Li.
-# All rights reserved.
-#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 # OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -17,7 +14,7 @@ configuration and utility functions of mummichog
 
 '''
 
-VERSION = '2.0.6-beta-20180309' 
+VERSION = '2.0.7-beta-20180423' 
 RELEASE = False
 USE_DEBUG = False
 

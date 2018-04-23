@@ -9,13 +9,7 @@
 
 '''
 Data input functions in mummichog
-
-Read user input data from
-    text files; xls files
-    web form 
-    future API support
-
-Overall design in v2: separating user input from theoretical model.
+Overall design changed in v2: separating user input from theoretical model.
 
 @author: Shuzhao Li
 
@@ -26,16 +20,14 @@ import StringIO
 
 import matplotlib.pyplot as plt
 
-
 from config import *
 from models import *
-
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 def print_and_loginfo(s):
     '''
-    This function should retire?
+    Changing logging. This function should retire?
     '''
     #print s
     logging.info(s)
@@ -125,8 +117,8 @@ def dispatcher():
               containing all features with tab-delimited columns
               m/z, retention time, p-value, statistic score
         
-        -n, --network: network model to use (default human_mfn), 
-              [human, human_mfn, mouse, fly, yeast]
+        -n, --network: network model to use (default human_mfn; models being ported to version 2), 
+              [human_mfn, worm]
         
         -o, --output: output file identification string (default 'mcgresult')
         -k, --workdir: directory for all data files.
