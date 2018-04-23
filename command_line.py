@@ -1,0 +1,1 @@
+from mummichog.main import *
