@@ -14,8 +14,8 @@ configuration and utility functions of mummichog
 
 '''
 
-VERSION = '2.1.0-beta-20191022' 
-RELEASE = False
+VERSION = '2.2.0-20200207' 
+RELEASE = True
 USE_DEBUG = False
 
 
@@ -28,9 +28,9 @@ MODULE_SIZE_LIMIT = 100
 SIGNIFICANCE_CUTOFF = 0.05
 MASS_RANGE = (50, 2000)
 
-
-RETENTION_TIME_TOLERANCE_FRAC = 0.01    # fraction of total retention time
-
+# fraction of total retention time, or of ranks of retention time
+# used to determine coelution of ions ad hoc
+RETENTION_TIME_TOLERANCE_FRAC = 0.02    
 
 PROTON = 1.00727646677
 

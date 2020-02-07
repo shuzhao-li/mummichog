@@ -27,7 +27,7 @@ logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 def print_and_loginfo(s):
     '''
-    Changing logging. This function should retire?
+    Legacy function for logging. This function should retire soon.
     '''
     #print s
     logging.info(s)
@@ -174,6 +174,8 @@ class MassFeature:
         self.row_number = row_number        # Unique ID
         self.mz = mz
         self.retention_time = retention_time
+        self.retention_time_rank = 0
+
         self.p_value = p_value
         self.statistic = statistic
         self.CompoundID_from_user = CompoundID_from_user
@@ -308,14 +310,28 @@ class InputUserData:
         self.header_fields = []
         self.ListOfMassFeatures = []
         self.input_featurelist = []
-        
+
+        # entry point of data input
         self.read()
+        self.update()
+        
+    def update(self):
+        '''
+        Update retention_time_rank and is_significant to all MassFeatures
+        '''
+        retention_times = [M.retention_time for M in self.ListOfMassFeatures]
+        retention_times.sort()
+        self.max_retention_time = retention_times[-1]
+        self.max_mz = max([M.mz for M in self.ListOfMassFeatures])
+
+        self.add_retention_time_rank(retention_times)
         self.determine_significant_list(self.ListOfMassFeatures)
         
-        self.max_retention_time = max([M.retention_time for M in self.ListOfMassFeatures])
-        self.max_mz = max([M.mz for M in self.ListOfMassFeatures])
         
-        
+    def add_retention_time_rank(self, retention_times):
+        for M in self.ListOfMassFeatures:
+            M.retention_time_rank = retention_times.index(M.retention_time)
+
     def text_to_ListOfMassFeatures(self, textValue, delimiter='\t'):
         '''
         Column order is hard coded for now, as mz, retention_time, p_value, statistic, CompoundID_from_user
@@ -335,7 +351,8 @@ class InputUserData:
             if MASS_RANGE[0] < mz < MASS_RANGE[1]:
                 # row # human-friendly, numbering from 1
                 self.ListOfMassFeatures.append( 
-                    MassFeature('row'+str(ii+1), mz, retention_time, p_value, statistic, CompoundID_from_user) )
+                    MassFeature('row'+str(ii+1), mz, retention_time, p_value, statistic, CompoundID_from_user) 
+                    )
             else:
                 excluded_list.append( (ii, mz, retention_time) )
         
@@ -363,6 +380,7 @@ class InputUserData:
         '''
         self.text_to_ListOfMassFeatures( 
                 open(os.path.join(self.paradict['workdir'], self.paradict['infile'])).read() )
+
         print_and_loginfo("Read %d features as reference list." %len(self.ListOfMassFeatures))
     
     
@@ -466,33 +484,22 @@ class InputUserData:
         uri = 'data:image/png;base64,' + urllib.quote(base64.b64encode(figdata.buf))
         return '<img src = "%s"/>' % uri
         
-        
-        
-        
-        
+
 
 # metabolicNetwork
 
 class DataMeetModel:
     '''
-    
-    working on v2
+    This returns the tracking map btw massFeatures - EmpiricalCompounds - Compounds.
+
+    Number of EmpiricalCompounds will be used to compute pathway enrichment, and control for module analysis.
+    New in v2, but will move to a boutique database in v3.
     
     many to many matches:
     when a Compound matched to multiple MassFeatures, split by retention time to EmpiricalCompounds;
     when a Mass Feature matched to multiple Compounds, no need to do anything.
     
-    
     Default primary ion is enforced, so that for an EmpiricalCompound, primary ion needs to exist before other ions.
-    
-    
-    also here, compile cpd adduct lists, build cpd tree
-    
-    
-    This returns the tracking map btw massFeatures - EmpiricalCompounds - Compounds
-    Number of EmpiricalCompounds will be used to compute pathway enrichment, and control for module analysis.
-    
-
     '''
     def __init__(self, theoreticalModel, userData):
         '''
@@ -504,8 +511,9 @@ class DataMeetModel:
         self.model = theoreticalModel
         self.data = userData
         
-        # retention time window for grouping, based on fraction of max rtime
+        # retention time window for grouping, based on fraction of time or ranks
         self.rtime_tolerance = self.data.max_retention_time * RETENTION_TIME_TOLERANCE_FRAC
+        self.rtime_tolerance_rank = len(self.data.ListOfMassFeatures) * RETENTION_TIME_TOLERANCE_FRAC
         
         # major data structures
         self.IonCpdTree = self.__build_cpdindex__( self.data.paradict['mode'] )
@@ -521,15 +529,11 @@ class DataMeetModel:
         # this is the sig list
         self.significant_features = self.data.input_featurelist
         self.TrioList = self.batch_rowindex_EmpCpd_Cpd( self.significant_features )
-        
-        
-        
 
     def __build_cpdindex__(self, msmode):
         '''
         indexed Compound list, to speed up m/z matching.
         Limited to MASS_RANGE (default 50 ~ 2000 dalton).
-        
         
         changing from adduct_function to wanted_adduct_list dictionary
         
@@ -576,7 +580,6 @@ class DataMeetModel:
 
     def __match_all_to_all__(self):
         '''
-        
         Major change of data structure here in version 2.
         In ver 1, matched m/z is stored in each Compound instance.
         Here, we produce mapping dictionaries for
@@ -643,15 +646,25 @@ class DataMeetModel:
         '''
         ListOfEmpiricalCompounds = []
         for k,v in self.cpd2mzFeatures.items():
-            ListOfEmpiricalCompounds += self.__split_Compound__(k, v, self.rtime_tolerance)      # getting inital instances of EmpiricalCompound
+            ListOfEmpiricalCompounds += self.__split_Compound__(k, v)      # getting inital instances of EmpiricalCompound
             
         print ("Got %d ListOfEmpiricalCompounds" %len(ListOfEmpiricalCompounds))
         
         # merge compounds that are not distinguished by analytical platform, e.g. isobaric
         return self.__merge_EmpiricalCompounds__( ListOfEmpiricalCompounds )
         
-        
-    def __split_Compound__(self, compoundID, list_match_mzFeatures, rtime_tolerance):
+    def __is_coelution__(self, massFeature1, massFeature2):
+        '''
+        True if retention times are within a tolerance window in time or ranks.
+        Not assuming massFeatures are sorted in this function.
+        '''
+        if abs(massFeature1.retention_time - massFeature2.retention_time) < self.rtime_tolerance or \
+            abs(massFeature1.retention_time_rank - massFeature2.retention_time_rank) < self.rtime_tolerance_rank:
+            return True
+        else:
+            return False
+
+    def __split_Compound__(self, compoundID, list_match_mzFeatures):
         '''
         Determine EmpiricalCompounds among the ions matched to a Compound;
         return list of EmpiricalCompounds (not final, but initiated here).
@@ -669,7 +682,8 @@ class DataMeetModel:
         ECompounds = []
         tmp = [ all_mzFeatures[0] ]
         for ii in range(len(all_mzFeatures)-1):
-            if all_mzFeatures[ii+1][0]-all_mzFeatures[ii][0] < rtime_tolerance:
+
+            if self.__is_coelution__( self.rowDict[all_mzFeatures[ii+1][1]], self.rowDict[all_mzFeatures[ii][1]] ):
                 tmp.append(
                             all_mzFeatures[ii+1] )
             else:
@@ -678,8 +692,8 @@ class DataMeetModel:
         
         ECompounds.append( EmpiricalCompound( tmp ) )
         return ECompounds
-        
-    
+
+
     def __merge_EmpiricalCompounds__(self, ListOfEmpiricalCompounds):
         '''
         If ion/mzFeatures are the same, merge EmpiricalCompounds
