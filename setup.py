@@ -4,20 +4,18 @@ from setuptools import setup
 
 setup(
   name='mummichog',
-  version='2.1.0',
+  version='2.2.1',
 
   author='Shuzhao Li, Andrei Todor',
   author_email='shuzhao.li@gmail.com',
-  description='Pathway and network analysis for metabolomics data',
-  long_description=open('README.rst').read(),
+  long_description=open('README.md').read(),
+  long_description_content_type='text/markdown',
   url='http://mummichog.org',
   license='BSD 3-Clause',
-
 
   keywords='metabolomics analysis bioinformatics mass spectrometry systems biology',
 
   classifiers=[
-    'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
     'Intended Audience :: Science/Research',
     'License :: OSI Approved :: BSD License',

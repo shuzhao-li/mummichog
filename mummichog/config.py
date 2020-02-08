@@ -14,7 +14,7 @@ configuration and utility functions of mummichog
 
 '''
 
-VERSION = '2.2.0-20200207' 
+VERSION = '2.2.1' 
 RELEASE = True
 USE_DEBUG = False
 
