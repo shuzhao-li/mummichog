@@ -189,7 +189,7 @@ class network:
             self.compute_degrees()
             self.make_modularity_matrix()
         else:
-            raise Exception, "Network nodes or edges not properly defined!"
+            raise Exception ("Network nodes or edges not properly defined!")
 
     def make_modularity_matrix(self):
         """
@@ -211,7 +211,7 @@ class network:
             for ii in range(self.num_nodes):
                 self.degrees.append(self.adjacency_matrix[ii].sum())
         else:
-            print "Degrees already exist!"
+            print ("Degrees already exist!")
 
     def make_adjacency_matrix(self):
         """
@@ -277,7 +277,7 @@ class network:
         s = " ".join(s.splitlines())
         nodes = re.findall('node.*?\\[.*?id.*?\\]', s)
         edges = re.findall('edge.*?\\[.*?source.*?\\]', s)
-        print "Found %d nodes and %d edges." %(len(nodes), len(edges))
+        print ("Found %d nodes and %d edges." %(len(nodes), len(edges)))
         nodes = [scan_node(x) for x in nodes]
         edges = [scan_edge(x) for x in edges]
         return (nodes, edges)

@@ -18,8 +18,10 @@ d) Web based presentation
 
 '''
 
-
-import os, csv, xlsxwriter, logging
+import os
+import csv
+import xlsxwriter
+import logging
 import numpy as np
 from websnippets import *
 
@@ -352,7 +354,7 @@ class LocalExporting:
 
         outfile = os.path.join(self.tabledir, "mcg_pathwayanalysis_") + self.data.paradict['output']
         # write .tsv
-        f =  open(outfile + '.tsv', 'wb')
+        f =  open(outfile + '.tsv', "w", newline="")
         writer = csv.writer( f, delimiter='\t' )
         writer.writerows( resultstr )
         f.close()
@@ -381,7 +383,7 @@ class LocalExporting:
 
         outfile = os.path.join(self.tabledir, "mcg_modularanalysis_") + self.data.paradict['output']
         # write .tsv
-        f =  open(outfile + '.tsv', 'wb')
+        f =  open(outfile + '.tsv', "w", newline="")
         writer = csv.writer( f, delimiter='\t' )
         writer.writerows( resultstr )
         f.close()

@@ -2,28 +2,29 @@
 
 from setuptools import setup
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
   name='mummichog',
-  version='2.1.0',
+  version='2.3.0',
 
   author='Shuzhao Li, Andrei Todor',
   author_email='shuzhao.li@gmail.com',
   description='Pathway and network analysis for metabolomics data',
-  long_description=open('README.rst').read(),
-  url='http://mummichog.org',
+  long_description=long_description,
+  long_description_content_type="text/markdown",
+  url='https://github.com/shuzhao-li/mummichog',
   license='BSD 3-Clause',
-
-
   keywords='metabolomics analysis bioinformatics mass spectrometry systems biology',
 
   classifiers=[
-    'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
     'Intended Audience :: Science/Research',
     'License :: OSI Approved :: BSD License',
     'Natural Language :: English',
     'Operating System :: OS Independent',
-    'Programming Language :: Python :: 2.7',
+    'Programming Language :: Python :: 3',
     'Topic :: Scientific/Engineering :: Bio-Informatics',
     'Topic :: Scientific/Engineering :: Chemistry',
     'Topic :: Software Development :: Libraries :: Python Modules',
@@ -36,6 +37,7 @@ setup(
         'console_scripts': ['mummichog=mummichog.command_line:main'],
     },
 
+  python_requires='>=3.4',
   install_requires=[
     'matplotlib',
     'networkx>=1,<2',

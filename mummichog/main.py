@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2010-2018 Shuzhao Li.
+# Copyright (c) 2010-2020 Shuzhao Li.
 # All rights reserved.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
@@ -32,7 +32,7 @@ from reporting import *
 
 def main():
     
-    print fishlogo
+    print (fishlogo)
     print ( "mummichog version %s \n" %VERSION )
     optdict = dispatcher()
 

@@ -14,10 +14,12 @@ Overall design changed in v2: separating user input from theoretical model.
 @author: Shuzhao Li
 
 '''
-import time, getopt, urllib, base64
+import time
+import getopt
+import base64
 import logging
-import StringIO
 
+from io import BytesIO
 import matplotlib.pyplot as plt
 
 from config import *
@@ -95,7 +97,7 @@ def cli_options(opts):
             optdict['outdir'] = '.'.join([time_stamp, a.replace('.csv', '')])
             
         elif o in ("-p", "--permutation"): optdict['permutation'] = int(a)
-        else: print "Unsupported argument ", o
+        else: print ("Unsupported argument ", o)
     
     return optdict
 
@@ -148,11 +150,11 @@ def dispatcher():
                              "visualization=", "workdir=", "input=", 
                              "reference=", "infile=", "output=", "permutation="])
         if not opts:
-            print helpstr
+            print (helpstr)
             sys.exit(2)
         
-    except getopt.GetoptError, err:
-        print str(err)
+    except getopt.GetoptError as err:
+        print (err)
         sys.exit(2)
     
     return cli_options(opts)
@@ -478,12 +480,10 @@ class InputUserData:
         plt.savefig(outfile+'.pdf')
         
         # get in-memory string for web use
-        figdata = StringIO.StringIO()
+        figdata = BytesIO()
         plt.savefig(figdata, format='png')
-        figdata.seek(0)
-        uri = 'data:image/png;base64,' + urllib.quote(base64.b64encode(figdata.buf))
-        return '<img src = "%s"/>' % uri
-        
+        return """<img src="data:image/png;base64,{}"/>""".format(base64.encodebytes(figdata.getvalue()).decode()) 
+
 
 
 # metabolicNetwork
@@ -613,7 +613,7 @@ class DataMeetModel:
         cpd2mzFeatures = {}
         for M in self.data.ListOfMassFeatures:
             for L in M.matched_Ions:
-                if cpd2mzFeatures.has_key(L[0]):
+                if L[0] in cpd2mzFeatures:
                     cpd2mzFeatures[L[0]].append( (L[1], L[2], M) )
                 else:
                     cpd2mzFeatures[L[0]] = [(L[1], L[2], M)]
@@ -703,7 +703,7 @@ class DataMeetModel:
         '''
         mydict = {}
         for L in ListOfEmpiricalCompounds:
-            if mydict.has_key(L.str_row_ion):
+            if L.str_row_ion in mydict:
                 mydict[ L.str_row_ion ].join(L)
             else:
                 mydict[ L.str_row_ion ]= L
@@ -715,7 +715,7 @@ class DataMeetModel:
         mydict = {}
         for E in self.ListOfEmpiricalCompounds:
             for m in E.massfeature_rows:
-                if mydict.has_key(m):
+                if m in mydict:
                     mydict[m].append(E)
                 else:
                     mydict[m] = [E]
@@ -729,7 +729,7 @@ class DataMeetModel:
         mydict = {}
         for E in self.ListOfEmpiricalCompounds:
             for m in E.compounds:
-                if mydict.has_key(m):
+                if m in mydict:
                     mydict[m].append(E)
                 else:
                     mydict[m] = [E]

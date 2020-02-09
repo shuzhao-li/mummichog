@@ -20,7 +20,10 @@ Separating I/O, to be used for both web apps and desktop apps
 @author: Shuzhao Li, Andrei Todor
 '''
 
-import logging, random, itertools
+import logging
+import random
+import itertools
+
 from scipy import stats
 import ng_modularity as NGM
 
@@ -235,10 +238,9 @@ class PathwayAnalysis:
             FET_tested_pathways.append(P)
             #  (enrich_pvalue, overlap_size, overlap_features, P) 
             
-        result = [(P.adjusted_p, P) for P in 
-                                        self.get_adjust_p_by_permutations(FET_tested_pathways)]
-        result.sort()
-        self.resultListOfPathways = [x[1] for x in result]
+        result = self.get_adjust_p_by_permutations(FET_tested_pathways)
+        result.sort(key=lambda x: x.adjusted_p, reverse=False)
+        self.resultListOfPathways = result
 
     
     def collect_hit_Trios(self):
@@ -314,14 +316,10 @@ class PathwayAnalysis:
         plt.savefig(outfile+'.pdf')
         
         # get in-memory string for web use
-        figdata = StringIO.StringIO()
+        figdata = BytesIO()
         plt.savefig(figdata, format='png')
-        figdata.seek(0)
-        uri = 'data:image/png;base64,' + urllib.quote(base64.b64encode(figdata.buf))
-        return '<img src = "%s"/>' % uri
-        
-    
-    
+        return """<img src="data:image/png;base64,{}"/>""".format(base64.encodebytes(figdata.getvalue()).decode()) 
+
 
 # --------------------------------------------------------
 #
@@ -655,9 +653,7 @@ class ActivityNetwork:
         '''
         connected_component_subgraphs likely to return sorted subgraphs. Just to be sure here.
         '''
-        connected = [(len(x),x) for x in nx.connected_component_subgraphs(an)]
-        connected.sort(reverse=True)
-        return connected[0][1]
+        return max(nx.connected_component_subgraphs(an), key=len)
         
     def __get_ave_connections__(self, N):
         '''
