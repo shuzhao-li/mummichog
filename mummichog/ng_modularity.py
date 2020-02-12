@@ -7,7 +7,8 @@ B) Rivera, Corban G., Rachit Vakil, and Joel S. Bader. BMC bioinformatics 11.Sup
 
 This was from Ca. 2008... 
 Future work should improve its efficiency or use a more efficient module-finding algorithm.
-Last modified to add fielding numpy.linalg.linalg.linAlgError, Shuzhao Li, 2017-05-15
+Modified to add fielding numpy.linalg.linalg.linAlgError, Shuzhao Li, 2017-05-15
+Modified to fit Python 3, 2020-02-12
 """
 
 USE_TEST_MODE = False

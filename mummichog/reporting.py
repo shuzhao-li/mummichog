@@ -23,9 +23,9 @@ import csv
 import xlsxwriter
 import logging
 import numpy as np
-from websnippets import *
+from .websnippets import *
 
-from config import VERSION, SIGNIFICANCE_CUTOFF
+from .config import VERSION, SIGNIFICANCE_CUTOFF
 
 class WebReporting:
     '''
@@ -47,8 +47,16 @@ class WebReporting:
     def run(self):
         self.get_dict_cpd_statistic()
         self.collect_web_export_graphs()
-        self.web_export()
+        html = self.web_export()
+        return html
         
+    def run_nodisk(self):
+        '''
+        For web use, no local disk write
+        '''
+        self.get_dict_cpd_statistic()
+        self.collect_web_export_graphs()
+        return self.web_export_str()
         
     def get_dict_cpd_statistic(self):
         self.dict_cpd_statistic = {}
@@ -71,13 +79,21 @@ class WebReporting:
         self.vis_nodes = set(vis_nodes)
 
 
-
-
     def web_export(self):
+        '''
+        Return HTML without head/foot.
+        '''
+        outfile = os.path.join(self.Local.rootdir, 'result.html')
+        webtextList = self.web_export_str()
+        with open(outfile, 'w') as O:
+            O.write(''.join(webtextList))
+        return webtextList[1]
+
+    def web_export_str(self):
         '''
         Write HTML and javascript based report.
         The visualization section includes activity network and up to top 5 modules.
-        
+        return webtextList as [head, middle HTML, end]
         '''
 
         HTML = HtmlExport()
@@ -151,10 +167,7 @@ class WebReporting:
                           self.model.dict_cpds_def, 
                           self.dict_cpd_statistic)
         
-        outfile = os.path.join(self.Local.rootdir, 'result.html')
-        with open(outfile, 'w') as O:
-            O.write(HTML.export_text())
-        
+        return HTML.export_text()
         
     def filter_vis_nodesdict(self, d1):
         d2 = {}
@@ -634,15 +647,13 @@ class HtmlExport:
         return newdict
 
     def export_text(self):
-        s = self.HTML_HEAD
+        s = ''
         for element in self.elements:
             s += element
             
-        return s + self.javascript_HEAD + self.jsdata + self.javascript_END + self.HTML_END
-
-
-
-
+        return [self.HTML_HEAD, 
+                s + self.javascript_HEAD + self.jsdata + self.javascript_END, 
+                self.HTML_END]
 
 
 

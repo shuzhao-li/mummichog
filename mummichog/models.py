@@ -27,7 +27,7 @@ metabolicModels = {
 
 @author: Shuzhao Li
 '''
-from JSON_metabolicModels import metabolicModels
+from .JSON_metabolicModels import metabolicModels
 import numpy as np
 import networkx as nx
 

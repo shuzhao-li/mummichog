@@ -14,12 +14,14 @@ configuration and utility functions of mummichog
 
 '''
 
-VERSION = '2.3.0-20200208'          # Python 3 only
+VERSION = '2.3.2-20200212'          # Python 3 only
 RELEASE = True
 USE_DEBUG = False
 
 
-import sys, os, inspect
+import sys
+import os
+import inspect
 import numpy as np
 
 
@@ -67,25 +69,21 @@ def sigmoid(x, theta=0.25):
 
 
 # accuracy of the MS instrument
-def mz_tolerance(mz, mode):
+def mz_tolerance(mz, instrument):
     '''
-    The functions supplied here for FTMS and Oribtrap 
-    were based on instrumentation in DPJ lab.
-    Please verify or replace them before using on your own data.
-    It's better to use a fixed value, e.g. 10 ppm, in case of uncertainty.
-    
-    will use flat ppm, not using this function for ------
-    
+    instrument is ppm in the input parameter. 
+    Using flat ppm now.
+    Future experimental function to add instrument specific calibration, but no point right now.
     '''
     try:
-        mode = int(mode)
-        return 0.000001 * mode * mz
+        instrument = int(instrument)
+        return 0.000001 * instrument * mz
     
     except ValueError:
-        if mode == 'FTMS':
+        if instrument == 'FTMS':
             return max(0.00001*mz, 3*2**(1.98816*np.log2(mz) - 26.1945))
         
-        elif mode == 'ORBITRAP':
+        elif instrument == 'ORBITRAP':
             # needs further calibration
             # return max(0.00001*mz, 2*2**(1.45325*np.log2(mz) - 20.8554))
             return 0.000010*mz

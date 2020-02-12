@@ -22,8 +22,8 @@ import logging
 from io import BytesIO
 import matplotlib.pyplot as plt
 
-from config import *
-from models import *
+from .config import *
+from .models import *
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 
@@ -307,7 +307,8 @@ class InputUserData:
     self.input_featurelist is "L_sig".
     '''
     
-    def __init__(self, paradict):
+    def __init__(self, paradict, web=False):
+        self.web = web
         self.paradict = paradict
         self.header_fields = []
         self.ListOfMassFeatures = []
@@ -380,7 +381,10 @@ class InputUserData:
         Row_numbers (rowii+1) are used as primary ID.
         # not using readlines() to avoid problem in processing some Mac files
         '''
-        self.text_to_ListOfMassFeatures( 
+        if self.web:
+            self.text_to_ListOfMassFeatures(self.paradict['datatext'])
+        else:
+            self.text_to_ListOfMassFeatures( 
                 open(os.path.join(self.paradict['workdir'], self.paradict['infile'])).read() )
 
         print_and_loginfo("Read %d features as reference list." %len(self.ListOfMassFeatures))
@@ -516,7 +520,7 @@ class DataMeetModel:
         self.rtime_tolerance_rank = len(self.data.ListOfMassFeatures) * RETENTION_TIME_TOLERANCE_FRAC
         
         # major data structures
-        self.IonCpdTree = self.__build_cpdindex__( self.data.paradict['mode'] )
+        self.IonCpdTree = self.__build_cpdindex__( self.data.paradict['wanted_adduct_list'] )
         self.rowDict = self.__build_rowindex__( self.data.ListOfMassFeatures )
         self.ListOfEmpiricalCompounds = self.get_ListOfEmpiricalCompounds()
         
@@ -530,7 +534,7 @@ class DataMeetModel:
         self.significant_features = self.data.input_featurelist
         self.TrioList = self.batch_rowindex_EmpCpd_Cpd( self.significant_features )
 
-    def __build_cpdindex__(self, msmode):
+    def __build_cpdindex__(self, wanted_adduct_list):
         '''
         indexed Compound list, to speed up m/z matching.
         Limited to MASS_RANGE (default 50 ~ 2000 dalton).
@@ -552,7 +556,8 @@ class DataMeetModel:
         >>> len(metabolicModels['human_model_mfn']['Compounds'])
         3560
         '''
-        wanted_ions = wanted_adduct_list[msmode]
+        #wanted_ions = wanted_adduct_list[msmode]
+        wanted_ions = wanted_adduct_list
         IonCpdTree = []
         
         for ii in range(MASS_RANGE[1]+1): 
@@ -629,7 +634,7 @@ class DataMeetModel:
         '''
         floor = int(mz)
         matched = []
-        mztol = mz_tolerance(mz, self.data.paradict['mode'])
+        mztol = mz_tolerance(mz, self.data.paradict['instrument'])
         for ii in [floor-1, floor, floor+1]:
             for L in IonCpdTree[ii]:
                 if abs(L[2]-mz) < mztol:

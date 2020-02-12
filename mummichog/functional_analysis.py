@@ -25,9 +25,9 @@ import random
 import itertools
 
 from scipy import stats
-import ng_modularity as NGM
+import mummichog.ng_modularity as NGM
 
-from get_user_data import *
+from .get_user_data import *
 
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
