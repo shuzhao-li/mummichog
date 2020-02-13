@@ -14,7 +14,7 @@ configuration and utility functions of mummichog
 
 '''
 
-VERSION = '2.3.2-20200212'          # Python 3 only
+VERSION = '2.3.3-20200213'          # Python 3 only
 RELEASE = True
 USE_DEBUG = False
 
