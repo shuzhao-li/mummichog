@@ -520,7 +520,15 @@ class DataMeetModel:
         self.rtime_tolerance_rank = len(self.data.ListOfMassFeatures) * RETENTION_TIME_TOLERANCE_FRAC
         
         # major data structures
-        self.IonCpdTree = self.__build_cpdindex__( self.data.paradict['wanted_adduct_list'] )
+        # web
+        if self.data.web:
+            wanted_ions = self.data.paradict['wanted_adduct_list']
+        # local
+        else:
+            wanted_ions = wanted_adduct_list[ self.data.paradict['mode'] ]
+
+        self.IonCpdTree = self.__build_cpdindex__(wanted_ions)
+
         self.rowDict = self.__build_rowindex__( self.data.ListOfMassFeatures )
         self.ListOfEmpiricalCompounds = self.get_ListOfEmpiricalCompounds()
         
@@ -534,7 +542,7 @@ class DataMeetModel:
         self.significant_features = self.data.input_featurelist
         self.TrioList = self.batch_rowindex_EmpCpd_Cpd( self.significant_features )
 
-    def __build_cpdindex__(self, wanted_adduct_list):
+    def __build_cpdindex__(self, wanted_ions):
         '''
         indexed Compound list, to speed up m/z matching.
         Limited to MASS_RANGE (default 50 ~ 2000 dalton).
@@ -556,8 +564,7 @@ class DataMeetModel:
         >>> len(metabolicModels['human_model_mfn']['Compounds'])
         3560
         '''
-        #wanted_ions = wanted_adduct_list[msmode]
-        wanted_ions = wanted_adduct_list
+
         IonCpdTree = []
         
         for ii in range(MASS_RANGE[1]+1): 
