@@ -19,13 +19,14 @@ d) Web based presentation
 '''
 
 import os
+import shutil
 import csv
 import xlsxwriter
 import logging
 import numpy as np
-from .websnippets import *
+from websnippets import *
 
-from .config import VERSION, SIGNIFICANCE_CUTOFF
+from config import VERSION, SIGNIFICANCE_CUTOFF
 
 class WebReporting:
     '''
@@ -43,6 +44,8 @@ class WebReporting:
         self.PA = PA
         self.MA = MA
         self.AN = AN
+
+        logging.info('Web reporting')
         
     def run(self):
         self.get_dict_cpd_statistic()
@@ -96,7 +99,7 @@ class WebReporting:
         return webtextList as [head, middle HTML, end]
         '''
 
-        HTML = HtmlExport()
+        HTML = HtmlExport(self.data)
         title = 'Mummichog Report: ' + self.data.paradict['output']
         HTML.add_element(title, 'h1', '')
         
@@ -110,7 +113,9 @@ class WebReporting:
         details_userData += "We are using %d features (p < %f) as significant list. The feature level data are shown in the Manhattan plots below." %(
                                     len(self.data.input_featurelist), self.data.paradict['cutoff'] )
         HTML.add_element(details_userData, 'p', '')
-        HTML.add_element(self.Local.inline_plot_userData_MWAS, 'div', 'inline_plot_userData_MWAS')
+        HTML.add_element('', 'div', '', 'mz_user_input')
+        HTML.add_element('', 'div', '', 'retention_time_input')
+        # HTML.add_element(self.Local.inline_plot_userData_MWAS, 'div', 'inline_plot_userData_MWAS')
 
         # Pathway table and figure
         HTML.add_element('Top pathways', 'h2', '')
@@ -294,6 +299,9 @@ class LocalExporting:
         os.mkdir(self.figuredir)
         os.mkdir(self.moduledir)
 
+        self.jsDir = os.path.join(self.rootdir, 'js')
+        os.mkdir(self.jsDir)
+
     def run(self):
         '''
         '''
@@ -313,6 +321,7 @@ class LocalExporting:
         self.export_top_modules()
         self.export_activity_network()
         self.export_cpd_attributes()
+        self.exportJsLibs()
         
         
     def export_userData(self):
@@ -488,6 +497,9 @@ class LocalExporting:
         out.write(s)
         out.close()
 
+    def exportJsLibs(self):
+        shutil.copyfile(os.getcwd()+ "/mummichog/resources/plotly-graphs.js", self.jsDir + '/plotly-graphs.js')
+        shutil.copyfile(os.getcwd() + "/mummichog/resources/plotly-latest.min.js", self.jsDir + '/plotly-latest.min.js')
 
 
 class HtmlExport:
@@ -496,7 +508,7 @@ class HtmlExport:
     Serving as a skeleton to be used for export functions in AnalysisCentral.
     In future versions, this can use existing tools to convert JSON to HTML.
     '''
-    def __init__(self):
+    def __init__(self, data):
         self.elements = []
         self.jsdata = ''
         
@@ -504,6 +516,8 @@ class HtmlExport:
         self.HTML_END = HTML_END
         self.javascript_HEAD = javascript_HEAD
         self.javascript_END = javascript_END
+        self.data = data
+
         
         
     def write_tag(self, s, tag, classname='', htmlid=''):
@@ -617,7 +631,15 @@ class HtmlExport:
         
         total_d3_data = 'var nodes = [ ' + nodestr + '];\n\n        var links = [' + edgestr + '];\n\n'
         total_cytoscapejs_data = '        var cytonodes = [ ' + cynodestr + '];\n\n        var cytoedges = [' + cyedgestr + '];\n\n'
-        self.jsdata = total_d3_data + total_cytoscapejs_data
+
+        userInputData = []
+        for feature in self.data.ListOfMassFeatures:
+            featureStr = '{mz:"' + str(feature.mz) + '", p_value:"' + str(feature.p_value) + '", retention_time:"' + str(feature.retention_time) + '"}'
+            userInputData.append(featureStr)
+
+        userInputFeatureData = 'var userInputData = [ ' + ",".join([str(f) for f in userInputData]) + '];\n\n';
+
+        self.jsdata = total_d3_data + total_cytoscapejs_data + userInputFeatureData
         
     def rescale_color(self, dict_cpd_foldchange):
         '''
@@ -650,9 +672,9 @@ class HtmlExport:
         s = ''
         for element in self.elements:
             s += element
-            
+
         return [self.HTML_HEAD, 
-                s + self.javascript_HEAD + self.jsdata + self.javascript_END, 
+                s + self.javascript_HEAD + self.jsdata + self.javascript_END,
                 self.HTML_END]
 
 

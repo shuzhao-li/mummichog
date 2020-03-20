@@ -22,8 +22,8 @@ import logging
 from io import BytesIO
 import matplotlib.pyplot as plt
 
-from .config import *
-from .models import *
+from config import *
+from models import *
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 
@@ -46,7 +46,7 @@ def cli_options(opts):
     'analysis': 'total',
     'targeted': False,
     'evidence': 3,
-    'visualization': 2,
+    'visualization': 2,g
     
     '''
     time_stamp = str(time.time())
