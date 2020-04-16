@@ -24,9 +24,9 @@ import csv
 import xlsxwriter
 import logging
 import numpy as np
-from websnippets import *
+from .websnippets import *
 
-from config import VERSION, SIGNIFICANCE_CUTOFF
+from .config import VERSION, SIGNIFICANCE_CUTOFF
 
 class WebReporting:
     '''
@@ -99,7 +99,7 @@ class WebReporting:
         return webtextList as [head, middle HTML, end]
         '''
 
-        HTML = HtmlExport(self.data)
+        HTML = HtmlExport(self.data, self.PA)
         title = 'Mummichog Report: ' + self.data.paradict['output']
         HTML.add_element(title, 'h1', '')
         
@@ -126,7 +126,8 @@ class WebReporting:
         HTML.add_element(details_pathwayData, 'p', '')
         pathwaystablly = self.write_pathway_table()
         HTML.add_element(pathwaystablly, 'div', 'pathwaystablly')
-        HTML.add_element(self.Local.inline_plot_pathwayBars, 'div', 'inline_plot_pathwayBars')
+        #HTML.add_element(self.Local.inline_plot_pathwayBars, 'div', 'inline_plot_pathwayBars')
+        HTML.add_element('', 'div', '', 'pathwayBarPlot')
 
         # place to insert network visusalization
         HTML.add_element('Top modules', 'h2', '')
@@ -508,7 +509,7 @@ class HtmlExport:
     Serving as a skeleton to be used for export functions in AnalysisCentral.
     In future versions, this can use existing tools to convert JSON to HTML.
     '''
-    def __init__(self, data):
+    def __init__(self, data, PA):
         self.elements = []
         self.jsdata = ''
         
@@ -517,7 +518,7 @@ class HtmlExport:
         self.javascript_HEAD = javascript_HEAD
         self.javascript_END = javascript_END
         self.data = data
-
+        self.PA = PA
         
         
     def write_tag(self, s, tag, classname='', htmlid=''):
@@ -639,7 +640,23 @@ class HtmlExport:
 
         userInputFeatureData = 'var userInputData = [ ' + ",".join([str(f) for f in userInputData]) + '];\n\n';
 
-        self.jsdata = total_d3_data + total_cytoscapejs_data + userInputFeatureData
+        cutoffValue = 'var cutoff = "' + str(self.data.paradict['cutoff']) + '";\n\n'
+
+        # self.PA.resultListOfPathways
+        use_pathways = [P for P in self.PA.resultListOfPathways if P.adjusted_p < SIGNIFICANCE_CUTOFF]
+        if len(use_pathways) < 6:
+            use_pathways = self.resultListOfPathways[:6]
+
+        pathwayData = []
+        for p in use_pathways:
+            pathwayStr = '{name:"' + str(p.name) + '", adjusted_p:"' + str(p.adjusted_p) + '"}'
+            pathwayData.append(pathwayStr)
+
+        pathwayPlotData = 'var pathwayData = [ ' + ",".join([str(f) for f in pathwayData]) + '];\n\n';
+
+        significanceCutoff = 'var significanceCutoff = "' + str(SIGNIFICANCE_CUTOFF) + '";\n\n'
+
+        self.jsdata = total_d3_data + total_cytoscapejs_data + userInputFeatureData + cutoffValue + significanceCutoff + pathwayPlotData
         
     def rescale_color(self, dict_cpd_foldchange):
         '''

@@ -22,8 +22,8 @@ import logging
 from io import BytesIO
 import matplotlib.pyplot as plt
 
-from config import *
-from models import *
+from .config import *
+from .models import *
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 

@@ -1,11 +1,11 @@
 
 //***** MZ scatter plot
-function makeMZUserInputPlot(userInputData) {
+function makeMZUserInputPlot(userInputData, cutoff) {
   //Plotly.d3.csv("userInputData.csv", function(data){ processMZData(data) } );
-  processMZData(userInputData)
+  processMZData(userInputData, cutoff)
 };
 
-function processMZData(allRows) {
+function processMZData(allRows, cutoff) {
 
   console.log(allRows);
   var xTrace1 = [], yTrace1 = []
@@ -13,11 +13,11 @@ function processMZData(allRows) {
 
   for (var i=0; i<allRows.length; i++) {
     row = allRows[i];
-    if (row['p_value'] < 0.000100){
-        xTrace1.push( row['mz'] );
+    if (row['p_value'] < parseFloat(cutoff)){
+        xTrace1.push( parseFloat(row['mz']) );
         yTrace1.push( - Math.log10(row['p_value']) );
     }else{
-        xTrace2.push( row['mz'] );
+        xTrace2.push( parseFloat(row['mz']) );
         yTrace2.push( - Math.log10(row['p_value']) );
     }
   }
@@ -25,17 +25,19 @@ function processMZData(allRows) {
   console.log( 'X tarce 1',xTrace1, 'Y trace 1', yTrace1);
   console.log( 'X tarce 2',xTrace2, 'Y trace 2', yTrace2);
 
-  makeMZPlotly( xTrace1, yTrace1, xTrace2, yTrace2);
+  makeMZPlotly( xTrace1, yTrace1, xTrace2, yTrace2, cutoff);
 }
 
-function makeMZPlotly( xTrace1, yTrace1, xTrace2, yTrace2){
+function makeMZPlotly( xTrace1, yTrace1, xTrace2, yTrace2, cutoff){
   var plotDiv = document.getElementById("plot");
-  var yLineValue = - Math.log10(0.000100)
+  var yLineValue = - Math.log10(cutoff)
+  var maxMz = Math.max(...xTrace1, ...xTrace2)
+    console.log('maxMz=' + maxMz)
   var trace1 = {
     mode: 'markers',
     x: xTrace1,
     y: yTrace1,
-    name: 'Significant, p < 0.000100 - (' + xTrace1.length + ')',
+    name: 'Significant, p < ' + cutoff + ', (' + xTrace1.length + ')',
     type: 'scatter'
   };
 
@@ -43,13 +45,13 @@ function makeMZPlotly( xTrace1, yTrace1, xTrace2, yTrace2){
     mode: 'markers',
     x: xTrace2,
     y: yTrace2,
-    name: 'p >= 0.000100 - (' + xTrace2.length + ')',
+    name: 'p >= ' + cutoff + ', (' + xTrace2.length + ')',
     type: 'scatter'
   };
 
   var trace3 = {
     mode: 'lines',
-    x: [0, 2000],
+    x: [0, maxMz],
     y: [yLineValue, yLineValue],
     line: {
         dash: 'dot',
@@ -79,12 +81,12 @@ function makeMZPlotly( xTrace1, yTrace1, xTrace2, yTrace2){
 
 
 //*** Ret Time scatter plot
-function makeRetTimeUserInputPlot(userInputData) {
+function makeRetTimeUserInputPlot(userInputData, cutoff) {
   //Plotly.d3.csv("userInputData.csv", function(data){ processRetTimeData(data) } );
-  processRetTimeData(userInputData)
+  processRetTimeData(userInputData, cutoff)
 };
 
-function processRetTimeData(allRows) {
+function processRetTimeData(allRows, cutoff) {
 
   console.log(allRows);
   var xTrace1 = [], yTrace1 = []
@@ -92,7 +94,7 @@ function processRetTimeData(allRows) {
 
   for (var i=0; i<allRows.length; i++) {
     row = allRows[i];
-    if (row['p_value'] < 0.000100){
+    if (row['p_value'] < parseFloat(cutoff)){
         xTrace1.push( row['retention_time'] );
         yTrace1.push( - Math.log10(row['p_value']) );
     }else{
@@ -104,17 +106,19 @@ function processRetTimeData(allRows) {
   console.log( 'X tarce 1',xTrace1, 'Y trace 1', yTrace1);
   console.log( 'X tarce 2',xTrace2, 'Y trace 2', yTrace2);
 
-  makeRetTimePlotly( xTrace1, yTrace1, xTrace2, yTrace2);
+  makeRetTimePlotly( xTrace1, yTrace1, xTrace2, yTrace2, cutoff);
 }
 
-function makeRetTimePlotly( xTrace1, yTrace1, xTrace2, yTrace2){
+function makeRetTimePlotly( xTrace1, yTrace1, xTrace2, yTrace2, cutoff){
   var plotDiv = document.getElementById("plot");
-  var yLineValue = - Math.log10(0.000100)
+  var yLineValue = - Math.log10(cutoff)
+  var maxRetTime = Math.max(...xTrace1, ...xTrace2)
+
   var trace1 = {
     mode: 'markers',
     x: xTrace1,
     y: yTrace1,
-    name: 'Significant, p < 0.000100 - (' + xTrace1.length + ')',
+    name: 'Significant, p < ' + cutoff + ', (' + xTrace1.length + ')',
     type: 'scatter'
   };
 
@@ -122,13 +126,13 @@ function makeRetTimePlotly( xTrace1, yTrace1, xTrace2, yTrace2){
     mode: 'markers',
     x: xTrace2,
     y: yTrace2,
-    name: 'p >= 0.000100 - (' + xTrace2.length + ')',
+    name: 'p >= ' + cutoff + ', (' + xTrace2.length + ')',
     type: 'scatter'
   };
 
   var trace3 = {
     mode: 'lines',
-    x: [0, 600],
+    x: [0, maxRetTime],
     y: [yLineValue, yLineValue],
     line: {
         dash: 'dot',
@@ -159,9 +163,9 @@ function makeRetTimePlotly( xTrace1, yTrace1, xTrace2, yTrace2){
 
 /// ** Pathway bar plot
 
-function makePathwayPlot() {
-  Plotly.d3.csv("mcg_pathwayanalysis_myResult.csv", function(data){ processPathwayData(data) } );
-
+function makePathwayPlot(pathwayData) {
+    //Plotly.d3.csv("mcg_pathwayanalysis_myResult.csv", function(data){ processPathwayData(data) } );
+    processPathwayData(pathwayData)
 };
 
 function processPathwayData(allRows) {
@@ -171,11 +175,11 @@ function processPathwayData(allRows) {
 
   for (var i=0; i<allRows.length; i++) {
     row = allRows[i];
-    if (row['p-value'] < 0.05){
-        yTrace1.push( row['pathway'] );
-        xTrace1.push( - Math.log10(row['p-value']) );
-        xLineTrace.push (1.301)
-    }
+    //if (row['p-value'] < 0.05){
+    yTrace1.push( row['name'] );
+    xTrace1.push( - Math.log10(row['adjusted_p']) );
+    xLineTrace.push (1.301)
+    //}
   }
 
   console.log( 'X tarce 1',xTrace1, 'Y trace 1', yTrace1);
@@ -229,12 +233,10 @@ function makePathwayPlotly( xTrace1, yTrace1, xLineTrace){
         t: 100,
         b: 70
       },
-      paper_bgcolor: 'rgb(248,248,255)',
-      plot_bgcolor: 'rgb(248,248,255)',
       showlegend: false
     };
 
 
-  Plotly.newPlot('tester8', data, layout);
+  Plotly.newPlot('pathwayBarPlot', data, layout);
 };
 

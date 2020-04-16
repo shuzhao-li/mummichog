@@ -102,8 +102,11 @@ javascript_END = """
            .attr("fill", function(d, i) { return color(i); });
            
         //user input plots
-        makeMZUserInputPlot(userInputData);
-        makeRetTimeUserInputPlot(userInputData);
+        makeMZUserInputPlot(userInputData, cutoff);
+        makeRetTimeUserInputPlot(userInputData, cutoff);
+
+        //Pathway Bar chart plot
+        makePathwayPlot(pathwayData)
         
         // initial draw
         cyto_draw_figure(cytonodes[0], cytoedges[0], node_sizes[0]);

@@ -26,8 +26,8 @@ A server version is upcoming, where metabolic models are stored a separate onlin
 '''
 
 
-from functional_analysis import *
-from reporting import *
+from .functional_analysis import *
+from .reporting import *
 
 
 def main():
