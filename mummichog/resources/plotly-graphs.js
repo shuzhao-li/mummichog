@@ -21,7 +21,7 @@ function processMZData(allRows, cutoff) {
         yTrace2.push( - Math.log10(row['p_value']) );
     }
   }
-    
+
   makeMZPlotly( xTrace1, yTrace1, xTrace2, yTrace2, cutoff);
 }
 

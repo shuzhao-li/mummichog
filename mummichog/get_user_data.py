@@ -46,7 +46,7 @@ def cli_options(opts):
     'analysis': 'total',
     'targeted': False,
     'evidence': 3,
-    'visualization': 2,g
+    'visualization': 2,
     
     '''
     time_stamp = str(time.time())
