@@ -33,7 +33,6 @@ from .reporting import *
 def main():
     
     print (fishlogo)
-    print ("this is my change")
     print ( "mummichog version %s \n" %VERSION )
     optdict = dispatcher()
 
@@ -65,7 +64,6 @@ def main():
     Local = LocalExporting(mixedNetwork, PA, MA, AN)
     Local.run()
 
-    print ('RUNNING WEB REPORTING')
     Web = WebReporting(Local, PA, MA, AN)
     Web.run()
     

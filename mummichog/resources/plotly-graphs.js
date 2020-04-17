@@ -21,10 +21,7 @@ function processMZData(allRows, cutoff) {
         yTrace2.push( - Math.log10(row['p_value']) );
     }
   }
-
-  console.log( 'X tarce 1',xTrace1, 'Y trace 1', yTrace1);
-  console.log( 'X tarce 2',xTrace2, 'Y trace 2', yTrace2);
-
+    
   makeMZPlotly( xTrace1, yTrace1, xTrace2, yTrace2, cutoff);
 }
 
@@ -75,7 +72,6 @@ function makeMZPlotly( xTrace1, yTrace1, xTrace2, yTrace2, cutoff){
       title:'User Input - m/z'
     };
 
-
   Plotly.newPlot('mz_user_input', data, layout);
 };
 
@@ -102,9 +98,6 @@ function processRetTimeData(allRows, cutoff) {
         yTrace2.push( - Math.log10(row['p_value']) );
     }
   }
-
-  console.log( 'X tarce 1',xTrace1, 'Y trace 1', yTrace1);
-  console.log( 'X tarce 2',xTrace2, 'Y trace 2', yTrace2);
 
   makeRetTimePlotly( xTrace1, yTrace1, xTrace2, yTrace2, cutoff);
 }
