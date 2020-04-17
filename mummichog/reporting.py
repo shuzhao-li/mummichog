@@ -113,9 +113,10 @@ class WebReporting:
         details_userData += "We are using %d features (p < %f) as significant list. The feature level data are shown in the Manhattan plots below." %(
                                     len(self.data.input_featurelist), self.data.paradict['cutoff'] )
         HTML.add_element(details_userData, 'p', '')
+        # HTML.add_element(self.Local.inline_plot_userData_MWAS, 'div', 'inline_plot_userData_MWAS') --  Using js plots instead
         HTML.add_element('', 'div', '', 'mz_user_input')
         HTML.add_element('', 'div', '', 'retention_time_input')
-        # HTML.add_element(self.Local.inline_plot_userData_MWAS, 'div', 'inline_plot_userData_MWAS')
+
 
         # Pathway table and figure
         HTML.add_element('Top pathways', 'h2', '')
@@ -126,7 +127,7 @@ class WebReporting:
         HTML.add_element(details_pathwayData, 'p', '')
         pathwaystablly = self.write_pathway_table()
         HTML.add_element(pathwaystablly, 'div', 'pathwaystablly')
-        #HTML.add_element(self.Local.inline_plot_pathwayBars, 'div', 'inline_plot_pathwayBars')
+        # HTML.add_element(self.Local.inline_plot_pathwayBars, 'div', 'inline_plot_pathwayBars') --  Using js plots instead
         HTML.add_element('', 'div', '', 'pathwayBarPlot')
 
         # place to insert network visusalization
@@ -313,8 +314,8 @@ class LocalExporting:
         self.writeTable_top_modules()
         
         # plot figures
-        self.plot_userData_MWAS()
-        self.plot_pathwayBars()
+        # self.plot_userData_MWAS() commenting out as plots are available via plotly js and rendered in the client browser
+        # self.plot_pathwayBars() commenting out as plots are available via plotly js and rendered in the client browser
         self.plot_pathway_model()
         self.plot_module_model()
         
@@ -633,16 +634,16 @@ class HtmlExport:
         total_d3_data = 'var nodes = [ ' + nodestr + '];\n\n        var links = [' + edgestr + '];\n\n'
         total_cytoscapejs_data = '        var cytonodes = [ ' + cynodestr + '];\n\n        var cytoedges = [' + cyedgestr + '];\n\n'
 
+        # User input data in json format for plot generation on the client browser
         userInputData = []
         for feature in self.data.ListOfMassFeatures:
             featureStr = '{mz:"' + str(feature.mz) + '", p_value:"' + str(feature.p_value) + '", retention_time:"' + str(feature.retention_time) + '"}'
             userInputData.append(featureStr)
 
         userInputFeatureData = 'var userInputData = [ ' + ",".join([str(f) for f in userInputData]) + '];\n\n';
-
         cutoffValue = 'var cutoff = "' + str(self.data.paradict['cutoff']) + '";\n\n'
 
-        # self.PA.resultListOfPathways
+        # Pathways results data for plot generation on the client browser
         use_pathways = [P for P in self.PA.resultListOfPathways if P.adjusted_p < SIGNIFICANCE_CUTOFF]
         if len(use_pathways) < 6:
             use_pathways = self.resultListOfPathways[:6]
@@ -653,7 +654,6 @@ class HtmlExport:
             pathwayData.append(pathwayStr)
 
         pathwayPlotData = 'var pathwayData = [ ' + ",".join([str(f) for f in pathwayData]) + '];\n\n';
-
         significanceCutoff = 'var significanceCutoff = "' + str(SIGNIFICANCE_CUTOFF) + '";\n\n'
 
         self.jsdata = total_d3_data + total_cytoscapejs_data + userInputFeatureData + cutoffValue + significanceCutoff + pathwayPlotData
