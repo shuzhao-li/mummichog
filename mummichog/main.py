@@ -63,7 +63,7 @@ def main():
     
     Local = LocalExporting(mixedNetwork, PA, MA, AN)
     Local.run()
-    
+
     Web = WebReporting(Local, PA, MA, AN)
     Web.run()
     

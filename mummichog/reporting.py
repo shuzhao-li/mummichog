@@ -19,6 +19,7 @@ d) Web based presentation
 '''
 
 import os
+import shutil
 import csv
 import xlsxwriter
 import logging
@@ -43,6 +44,8 @@ class WebReporting:
         self.PA = PA
         self.MA = MA
         self.AN = AN
+
+        logging.info('Web reporting')
         
     def run(self):
         self.get_dict_cpd_statistic()
@@ -96,7 +99,7 @@ class WebReporting:
         return webtextList as [head, middle HTML, end]
         '''
 
-        HTML = HtmlExport()
+        HTML = HtmlExport(self.data, self.PA)
         title = 'Mummichog Report: ' + self.data.paradict['output']
         HTML.add_element(title, 'h1', '')
         
@@ -110,7 +113,10 @@ class WebReporting:
         details_userData += "We are using %d features (p < %f) as significant list. The feature level data are shown in the Manhattan plots below." %(
                                     len(self.data.input_featurelist), self.data.paradict['cutoff'] )
         HTML.add_element(details_userData, 'p', '')
-        HTML.add_element(self.Local.inline_plot_userData_MWAS, 'div', 'inline_plot_userData_MWAS')
+        # HTML.add_element(self.Local.inline_plot_userData_MWAS, 'div', 'inline_plot_userData_MWAS') --  Using js plots instead
+        HTML.add_element('', 'div', '', 'mz_user_input')
+        HTML.add_element('', 'div', '', 'retention_time_input')
+
 
         # Pathway table and figure
         HTML.add_element('Top pathways', 'h2', '')
@@ -121,7 +127,8 @@ class WebReporting:
         HTML.add_element(details_pathwayData, 'p', '')
         pathwaystablly = self.write_pathway_table()
         HTML.add_element(pathwaystablly, 'div', 'pathwaystablly')
-        HTML.add_element(self.Local.inline_plot_pathwayBars, 'div', 'inline_plot_pathwayBars')
+        # HTML.add_element(self.Local.inline_plot_pathwayBars, 'div', 'inline_plot_pathwayBars') --  Using js plots instead
+        HTML.add_element('', 'div', '', 'pathwayBarPlot')
 
         # place to insert network visusalization
         HTML.add_element('Top modules', 'h2', '')
@@ -294,6 +301,9 @@ class LocalExporting:
         os.mkdir(self.figuredir)
         os.mkdir(self.moduledir)
 
+        self.jsDir = os.path.join(self.rootdir, 'js')
+        os.mkdir(self.jsDir)
+
     def run(self):
         '''
         '''
@@ -304,8 +314,8 @@ class LocalExporting:
         self.writeTable_top_modules()
         
         # plot figures
-        self.plot_userData_MWAS()
-        self.plot_pathwayBars()
+        # self.plot_userData_MWAS() commenting out as plots are available via plotly js and rendered in the client browser
+        # self.plot_pathwayBars() commenting out as plots are available via plotly js and rendered in the client browser
         self.plot_pathway_model()
         self.plot_module_model()
         
@@ -313,6 +323,7 @@ class LocalExporting:
         self.export_top_modules()
         self.export_activity_network()
         self.export_cpd_attributes()
+        self.exportJsLibs()
         
         
     def export_userData(self):
@@ -488,6 +499,9 @@ class LocalExporting:
         out.write(s)
         out.close()
 
+    def exportJsLibs(self):
+        shutil.copyfile(os.getcwd()+ "/mummichog/resources/plotly-graphs.js", self.jsDir + '/plotly-graphs.js')
+        shutil.copyfile(os.getcwd() + "/mummichog/resources/plotly-latest.min.js", self.jsDir + '/plotly-latest.min.js')
 
 
 class HtmlExport:
@@ -496,7 +510,7 @@ class HtmlExport:
     Serving as a skeleton to be used for export functions in AnalysisCentral.
     In future versions, this can use existing tools to convert JSON to HTML.
     '''
-    def __init__(self):
+    def __init__(self, data, PA):
         self.elements = []
         self.jsdata = ''
         
@@ -504,6 +518,8 @@ class HtmlExport:
         self.HTML_END = HTML_END
         self.javascript_HEAD = javascript_HEAD
         self.javascript_END = javascript_END
+        self.data = data
+        self.PA = PA
         
         
     def write_tag(self, s, tag, classname='', htmlid=''):
@@ -617,7 +633,30 @@ class HtmlExport:
         
         total_d3_data = 'var nodes = [ ' + nodestr + '];\n\n        var links = [' + edgestr + '];\n\n'
         total_cytoscapejs_data = '        var cytonodes = [ ' + cynodestr + '];\n\n        var cytoedges = [' + cyedgestr + '];\n\n'
-        self.jsdata = total_d3_data + total_cytoscapejs_data
+
+        # User input data in json format for plot generation on the client browser
+        userInputData = []
+        for feature in self.data.ListOfMassFeatures:
+            featureStr = '{mz:"' + str(feature.mz) + '", p_value:"' + str(feature.p_value) + '", retention_time:"' + str(feature.retention_time) + '"}'
+            userInputData.append(featureStr)
+
+        userInputFeatureData = 'var userInputData = [ ' + ",".join([str(f) for f in userInputData]) + '];\n\n';
+        cutoffValue = 'var cutoff = "' + str(self.data.paradict['cutoff']) + '";\n\n'
+
+        # Pathways results data for plot generation on the client browser
+        use_pathways = [P for P in self.PA.resultListOfPathways if P.adjusted_p < SIGNIFICANCE_CUTOFF]
+        if len(use_pathways) < 6:
+            use_pathways = self.resultListOfPathways[:6]
+
+        pathwayData = []
+        for p in use_pathways:
+            pathwayStr = '{name:"' + str(p.name) + '", adjusted_p:"' + str(p.adjusted_p) + '"}'
+            pathwayData.append(pathwayStr)
+
+        pathwayPlotData = 'var pathwayData = [ ' + ",".join([str(f) for f in pathwayData]) + '];\n\n';
+        significanceCutoff = 'var significanceCutoff = "' + str(SIGNIFICANCE_CUTOFF) + '";\n\n'
+
+        self.jsdata = total_d3_data + total_cytoscapejs_data + userInputFeatureData + cutoffValue + significanceCutoff + pathwayPlotData
         
     def rescale_color(self, dict_cpd_foldchange):
         '''
@@ -650,9 +689,9 @@ class HtmlExport:
         s = ''
         for element in self.elements:
             s += element
-            
+
         return [self.HTML_HEAD, 
-                s + self.javascript_HEAD + self.jsdata + self.javascript_END, 
+                s + self.javascript_HEAD + self.jsdata + self.javascript_END,
                 self.HTML_END]
 
 
