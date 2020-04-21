@@ -21,6 +21,7 @@ d) Web based presentation
 import os
 import shutil
 import csv
+import json
 import xlsxwriter
 import logging
 import numpy as np
@@ -324,6 +325,8 @@ class LocalExporting:
         self.export_activity_network()
         self.export_cpd_attributes()
         self.exportJsLibs()
+
+        self.export_json_all()
         
         
     def export_userData(self):
@@ -395,12 +398,11 @@ class LocalExporting:
         resultstr = [
                      ['MODULE', 'p-value', 'size', 'members (name)', 'members (id)', 
                       'This module overlaps with'], ]
-        counter = 0
+        
         for M in self.MA.top_modules:
-            counter += 1
             nodes = M.graph.nodes()
             names = [self.model.dict_cpds_def.get(x, '') for x in nodes]
-            resultstr.append(['module_' + str(counter), str(M.p_value),
+            resultstr.append([M.id, str(M.p_value),
                               str(len(nodes)), '$'.join(names),
                               ','.join(nodes), self.find_top_pathways(nodes),
                                ])
@@ -456,11 +458,9 @@ class LocalExporting:
         export to figures/network_modules/
         for visualizatin using CytoScape
         '''
-        counter = 0
         for M in self.MA.top_modules:
-            counter += 1
             M.export_network_txt(self.model, 
-                                 os.path.join(self.moduledir, 'module_' + str(counter) + '.txt'))
+                                 os.path.join(self.moduledir, M.id + '.txt'))
 
     def export_activity_network(self):
             self.AN.export_network_txt(self.model, 
@@ -502,6 +502,75 @@ class LocalExporting:
     def exportJsLibs(self):
         shutil.copyfile(os.getcwd()+ "/mummichog/resources/plotly-graphs.js", self.jsDir + '/plotly-graphs.js')
         shutil.copyfile(os.getcwd() + "/mummichog/resources/plotly-latest.min.js", self.jsDir + '/plotly-latest.min.js')
+
+
+    def export_json_all(self):
+        '''
+        This will be the export of all mummichog output in JSON,
+        thus enabling visualization in a separate package.
+
+        Manhattan plots are based on userData_original.
+        userData_empirialCompound is link btw user input data and theoretical metabolites.
+
+        Prototyping, will improve details [2020-04-21, SL]
+        '''
+        json_data = {
+
+            'userData_original' : [
+                {
+                    'id': M.row_number, 'mz': M.mz, 'retention_time': M.retention_time, 'p_value': M.p_value, 
+                    'statistic': M.statistic, 'CompoundID_from_user': M.CompoundID_from_user,
+                } for M in self.data.ListOfMassFeatures
+            ],
+
+            'userData_empirialCompound' : [
+                {
+                    'id': E.EID,
+                    'listOfFeatures': E.listOfFeatures,     # This links to userData_original['id'], which is row_number
+                    'chosen_compounds': E.chosen_compounds,
+                    'face_compound': E.face_compound,
+                    # will add compound names, def, etc.
+                } for E in self.mixedNetwork.ListOfEmpiricalCompounds
+            ],
+
+            'meta_data' : {
+                'input_parameters': self.data.paradict,
+                'metabolic_model': self.model.version,
+                'mummichog_version': VERSION,
+            },
+
+            # a pathway is defined in models.metabolicPathway
+            'result_pathwayAnalysis' : [
+                {
+                    'id': P.id,
+                    'name': P.name,
+                    'pathway_p_value': P.adjusted_p,
+                    'overlap_size': P.overlap_size, 
+                    'pathway_size': P.EmpSize,
+                    'overlap_EmpiricalCompounds': [E.EID for E in P.overlap_EmpiricalCompounds],
+                    'significant_compounds': [E.chosen_compounds for E in P.overlap_EmpiricalCompounds],
+                    'all_compounds': P.cpds,
+                } for P in self.PA.resultListOfPathways
+            ],
+
+            'result_networkModules' : [
+                {
+                    'id': M.id,
+                    'p_value': M.p_value,
+                    'members': M.graph.nodes(), # This is on theoretical metabolites/compounds
+                    #'size' is number of members
+                    # Common names of members can be looked up, from metabolic model/metabolite definition 
+                } for M in self.MA.top_modules
+            ],
+
+        }
+
+        with open(os.path.join(self.rootdir, "result.json"), "w") as O:
+            O.write(json.dumps(json_data))
+
+
+
+
 
 
 class HtmlExport:

@@ -523,8 +523,11 @@ class ModularAnalysis:
         top_modules = [M for M in self.modules_from_significant_features if M.p_value < SIGNIFICANCE_CUTOFF]
         self.top_modules = sorted(top_modules, key=lambda M: M.p_value)
         
-        
-        
+        # assign module ID
+        counter = 0
+        for M in self.top_modules:
+            counter += 1
+            M.id = 'module_' + str(counter)
 
 
     def __calculate_p__(self, x, record):

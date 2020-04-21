@@ -30,6 +30,9 @@ Mummichog can be installed using pip (pip Installs Packages), the Python package
 
 This is OS independent. To read more on pip `here <https://pip.pypa.io/en/stable/installing/#installing-with-get-pip-py>`.
 
-One can also run mummichog without installing it. Direct python call on a downloaded copy can work.
+One can also run mummichog without installing it. Direct python call on a downloaded copy can work, e.g.
+
+    python3 -m mummichog.main -f mummichog/tests/testdata0710.txt -o t2
+
 
 The initial paper on mummichog is described in Li et al. Predicting Network Activity from High Throughput Metabolomics. PLoS Computational Biology (2013); doi:10.1371/journal.pcbi.1003123.. More on `project website <http://mummichog.org>`.

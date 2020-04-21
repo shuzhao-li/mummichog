@@ -10,11 +10,12 @@
 
 '''
 configuration and utility functions of mummichog
-@author: Shuzhao Li
+
+To move adduct calculation out to azimuth-metabolomics.
 
 '''
 
-VERSION = '2.3.3-20200213'          # Python 3 only
+VERSION = '2.4.0'          # Python 3 only
 RELEASE = True
 USE_DEBUG = False
 

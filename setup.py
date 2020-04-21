@@ -7,9 +7,9 @@ with open("README.md", "r") as fh:
 
 setup(
   name='mummichog',
-  version='2.3.3',
+  version='2.4.0',
 
-  author='Shuzhao Li, Andrei Todor',
+  author='Shuzhao Li, Francisco Castellanos, Andrei Todor',
   author_email='shuzhao.li@gmail.com',
   description='Pathway and network analysis for metabolomics data',
   long_description=long_description,
