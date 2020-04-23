@@ -1,8 +1,8 @@
 
 //***** MZ scatter plot
-function makeMZUserInputPlot(userInputData, cutoff) {
-  //Plotly.d3.csv("userInputData.csv", function(data){ processMZData(data) } );
-  processMZData(userInputData, cutoff)
+function makeMZUserInputPlot() {
+    //Plotly.d3.json("result.json", function(data){ processMZData(data.userData_original, cutoff) } );
+    processMZData(data.userData_original, data.meta_data.input_parameters.cutoff)
 };
 
 function processMZData(allRows, cutoff) {
@@ -77,9 +77,9 @@ function makeMZPlotly( xTrace1, yTrace1, xTrace2, yTrace2, cutoff){
 
 
 //*** Ret Time scatter plot
-function makeRetTimeUserInputPlot(userInputData, cutoff) {
+function makeRetTimeUserInputPlot() {
   //Plotly.d3.csv("userInputData.csv", function(data){ processRetTimeData(data) } );
-  processRetTimeData(userInputData, cutoff)
+    processRetTimeData(data.userData_original, data.meta_data.input_parameters.cutoff)
 };
 
 function processRetTimeData(allRows, cutoff) {
@@ -156,23 +156,23 @@ function makeRetTimePlotly( xTrace1, yTrace1, xTrace2, yTrace2, cutoff){
 
 /// ** Pathway bar plot
 
-function makePathwayPlot(pathwayData) {
+function makePathwayPlot() {
     //Plotly.d3.csv("mcg_pathwayanalysis_myResult.csv", function(data){ processPathwayData(data) } );
-    processPathwayData(pathwayData)
+    processPathwayData(data.result_pathwayAnalysis, data.meta_data.significance_cutoff)
 };
 
-function processPathwayData(allRows) {
+function processPathwayData(allRows, cutoff) {
 
   console.log(allRows);
   var xTrace1 = [], yTrace1 = [], xLineTrace = [];
 
   for (var i=0; i<allRows.length; i++) {
     row = allRows[i];
-    //if (row['p-value'] < 0.05){
-    yTrace1.push( row['name'] );
-    xTrace1.push( - Math.log10(row['adjusted_p']) );
-    xLineTrace.push (1.301)
-    //}
+    if (row['pathway_p_value'] < parseFloat(cutoff)){
+        yTrace1.push( row['name'] );
+        xTrace1.push( - Math.log10(row['pathway_p_value']) );
+        xLineTrace.push (1.301)
+    }
   }
 
   console.log( 'X tarce 1',xTrace1, 'Y trace 1', yTrace1);
