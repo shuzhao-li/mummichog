@@ -518,8 +518,8 @@ class LocalExporting:
 
             'userData_original' : [
                 {
-                    'id': M.row_number, 'mz': M.mz, 'retention_time': M.retention_time, 'p_value': M.p_value, 
-                    'statistic': M.statistic, 'CompoundID_from_user': M.CompoundID_from_user,
+                    'id': M.row_number, 'mz': str(M.mz), 'retention_time': str(M.retention_time), 'p_value': str(M.p_value),
+                    'statistic': str(M.statistic), 'CompoundID_from_user': M.CompoundID_from_user,
                 } for M in self.data.ListOfMassFeatures
             ],
 
@@ -537,6 +537,7 @@ class LocalExporting:
                 'input_parameters': self.data.paradict,
                 'metabolic_model': self.model.version,
                 'mummichog_version': VERSION,
+                'significance_cutoff' : SIGNIFICANCE_CUTOFF
             },
 
             # a pathway is defined in models.metabolicPathway
@@ -545,11 +546,11 @@ class LocalExporting:
                     'id': P.id,
                     'name': P.name,
                     'pathway_p_value': P.adjusted_p,
-                    'overlap_size': P.overlap_size, 
+                    'overlap_size': P.overlap_size,
                     'pathway_size': P.EmpSize,
                     'overlap_EmpiricalCompounds': [E.EID for E in P.overlap_EmpiricalCompounds],
                     'significant_compounds': [E.chosen_compounds for E in P.overlap_EmpiricalCompounds],
-                    'all_compounds': P.cpds,
+                    # 'all_compounds': P.cpds,
                 } for P in self.PA.resultListOfPathways
             ],
 
@@ -559,7 +560,7 @@ class LocalExporting:
                     'p_value': M.p_value,
                     'members': M.graph.nodes(), # This is on theoretical metabolites/compounds
                     #'size' is number of members
-                    # Common names of members can be looked up, from metabolic model/metabolite definition 
+                    # Common names of members can be looked up, from metabolic model/metabolite definition
                 } for M in self.MA.top_modules
             ],
 
@@ -568,9 +569,8 @@ class LocalExporting:
         with open(os.path.join(self.rootdir, "result.json"), "w") as O:
             O.write(json.dumps(json_data))
 
-
-
-
+        with open(os.path.join(self.jsDir, "result.js"), "w") as O:
+            O.write("var alldata = '" + json.dumps(json_data) + "';")
 
 
 class HtmlExport:
@@ -703,29 +703,8 @@ class HtmlExport:
         total_d3_data = 'var nodes = [ ' + nodestr + '];\n\n        var links = [' + edgestr + '];\n\n'
         total_cytoscapejs_data = '        var cytonodes = [ ' + cynodestr + '];\n\n        var cytoedges = [' + cyedgestr + '];\n\n'
 
-        # User input data in json format for plot generation on the client browser
-        userInputData = []
-        for feature in self.data.ListOfMassFeatures:
-            featureStr = '{mz:"' + str(feature.mz) + '", p_value:"' + str(feature.p_value) + '", retention_time:"' + str(feature.retention_time) + '"}'
-            userInputData.append(featureStr)
 
-        userInputFeatureData = 'var userInputData = [ ' + ",".join([str(f) for f in userInputData]) + '];\n\n';
-        cutoffValue = 'var cutoff = "' + str(self.data.paradict['cutoff']) + '";\n\n'
-
-        # Pathways results data for plot generation on the client browser
-        use_pathways = [P for P in self.PA.resultListOfPathways if P.adjusted_p < SIGNIFICANCE_CUTOFF]
-        if len(use_pathways) < 6:
-            use_pathways = self.resultListOfPathways[:6]
-
-        pathwayData = []
-        for p in use_pathways:
-            pathwayStr = '{name:"' + str(p.name) + '", adjusted_p:"' + str(p.adjusted_p) + '"}'
-            pathwayData.append(pathwayStr)
-
-        pathwayPlotData = 'var pathwayData = [ ' + ",".join([str(f) for f in pathwayData]) + '];\n\n';
-        significanceCutoff = 'var significanceCutoff = "' + str(SIGNIFICANCE_CUTOFF) + '";\n\n'
-
-        self.jsdata = total_d3_data + total_cytoscapejs_data + userInputFeatureData + cutoffValue + significanceCutoff + pathwayPlotData
+        self.jsdata = total_d3_data + total_cytoscapejs_data
         
     def rescale_color(self, dict_cpd_foldchange):
         '''

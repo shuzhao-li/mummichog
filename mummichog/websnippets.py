@@ -72,7 +72,7 @@ HTML_HEAD = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "h
         <script src="https://cdn.rawgit.com/cytoscape/cytoscape.js-spread/1.0.9/cytoscape-spread.js"></script> 
         <script src="js/plotly-latest.min.js"></script>
         <script src="js/plotly-graphs.js"></script>
-       
+        <script src="js/result.js"></script>
         </head> 
         <body> 
         """
@@ -102,11 +102,12 @@ javascript_END = """
            .attr("fill", function(d, i) { return color(i); });
            
         //user input plots
-        makeMZUserInputPlot(userInputData, cutoff);
-        makeRetTimeUserInputPlot(userInputData, cutoff);
+        var data = JSON.parse(alldata);
+        makeMZUserInputPlot();
+        makeRetTimeUserInputPlot();
 
         //Pathway Bar chart plot
-        makePathwayPlot(pathwayData)
+        makePathwayPlot()
         
         // initial draw
         cyto_draw_figure(cytonodes[0], cytoedges[0], node_sizes[0]);
