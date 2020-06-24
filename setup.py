@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
   name='mummichog',
-  version='2.2.1',
+  version='2.2.2',
 
   author='Shuzhao Li, Andrei Todor',
   author_email='shuzhao.li@gmail.com',
