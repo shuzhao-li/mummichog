@@ -370,10 +370,15 @@ class InputUserData:
         return t
 
     def __check_redundant__(self, L):
-        redundant = len(L) - len(set(L))
-        if redundant > 0:
-            print_and_loginfo( "Your input file contains %d redundant features." %(redundant) )
-        return L
+        '''
+        Remove empty or redundant lines
+        '''
+        new = []
+        for line in L:
+            if line.strip() and line not in new:
+                new.append(line)
+
+        return new
 
     def read(self):
         '''
