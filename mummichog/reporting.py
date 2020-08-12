@@ -364,14 +364,14 @@ class LocalExporting:
         with open(os.path.join(self.tabledir, "ListOfEmpiricalCompounds.tsv"), 'w') as O:
             O.write(s)
 
-        s = "input_row\tEID\tstr_row_ion\tcompounds\tcompound_names\tm/z\tretention_time\tp_value\tstatistic\tCompoundID_from_user\n"
+        s = "input_row\tEID\tstr_row_ion\tcompounds\tcompound_names\tinput_row\tm/z\tretention_time\tp_value\tstatistic\tCompoundID_from_user\n"
         for row in self.mixedNetwork.mzrows:
             # not all input rows match to an empCpd
             try:
                 for E in self.mixedNetwork.rowindex_to_EmpiricalCompounds[row]:
                     names = [self.model.dict_cpds_def.get(x, '') for x in E.compounds]
                     s += '\t'.join([row, E.EID, E.str_row_ion, ';'.join(E.compounds), '$'.join(names)]
-                        ) + self.mixedNetwork.rowDict[row].make_str_output() + '\n'
+                        ) + '\t' + self.mixedNetwork.rowDict[row].make_str_output() + '\n'
             except KeyError:
                 pass
 
