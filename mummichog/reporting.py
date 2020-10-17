@@ -14,7 +14,8 @@ b) Result tables
 c) Intermediate data
 d) Web based presentation
 
-@author: Shuzhao Li, Andrei Todor
+@author: Shuzhao Li, Francisco Castellanos
+With js code contributed by Andrei Todor
 
 '''
 
@@ -326,19 +327,14 @@ class LocalExporting:
         self.export_cpd_attributes()
         self.exportJsLibs()
 
-        self.export_json_all()
+        # testing JSON output
+        # self.export_json_all()
         
         
     def export_userData(self):
         '''
-        to do
-        
-        Should add this function to write out user data with row_numbers,
-        to help users to track data.
-        
-        self.ListOfMassFeatures.append( 
-                    MassFeature('row'+str(ii+1), mz, retention_time, p_value, statistic, CompoundID_from_user) )
-        
+        to write out user data with row_numbers,
+        to use as unique ID and help users to track data.
         '''
         s = "massfeature_rows\tm/z\tretention_time\tp_value\tstatistic\tCompoundID_from_user\n"
         for F in self.data.ListOfMassFeatures:
@@ -346,7 +342,6 @@ class LocalExporting:
                 
         with open(os.path.join(self.tabledir, "userInputData.txt"), 'w') as O:
             O.write(s)
-            
             
 
     def export_EmpiricalCompounds(self):
