@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
   name='mummichog',
-  version='2.4.2',
+  version='2.4.3',
 
   author='Shuzhao Li, Francisco Castellanos, Andrei Todor',
   author_email='shuzhao.li@gmail.com',
@@ -30,7 +30,9 @@ setup(
     'Topic :: Software Development :: Libraries :: Python Modules',
   ],
 
-  packages=['mummichog', 'mummichog/tests'],
+  packages=find_packages(include=['mummichog', 'mummichog.*']),
+  data_files=[ ('mummichog/resources', ['mummichog/resources/plotly-graphs.js', 'mummichog/resources/plotly-latest.min.js']),
+               ('mummichog/tests', ['mummichog/tests/testdata0710.txt']) ],
   include_package_data=True,
   zip_safe=True,
   entry_points = {
