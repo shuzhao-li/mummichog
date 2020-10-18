@@ -26,8 +26,9 @@ import json
 import xlsxwriter
 import logging
 import numpy as np
-from .websnippets import *
 
+from . import resources
+from .websnippets import *
 from .config import VERSION, SIGNIFICANCE_CUTOFF
 
 class WebReporting:
@@ -328,7 +329,7 @@ class LocalExporting:
         self.exportJsLibs()
 
         # testing JSON output
-        # self.export_json_all()
+        self.export_json_all()
         
         
     def export_userData(self):
@@ -510,9 +511,17 @@ class LocalExporting:
         out.close()
 
     def exportJsLibs(self):
-        shutil.copyfile(os.getcwd()+ "/mummichog/resources/plotly-graphs.js", self.jsDir + '/plotly-graphs.js')
-        shutil.copyfile(os.getcwd() + "/mummichog/resources/plotly-latest.min.js", self.jsDir + '/plotly-latest.min.js')
-
+        '''
+        To-do in v3: Should move all js visualization to separate package.
+        Difficult to copy files. os.getcwd() is a wrong way 
+        because mummichog may be installed to Python site-packages as library.
+        '''
+        package_dir = resources.__path__[0]
+        # Use os.path.join to be OS independent.
+        shutil.copyfile(os.path.join(package_dir, "plotly-graphs.js"), 
+                        os.path.join(self.jsDir, "plotly-graphs.js"))
+        shutil.copyfile(os.path.join(package_dir, "plotly-latest.min.js"), 
+                        os.path.join(self.jsDir, "plotly-latest.min.js"))
 
     def export_json_all(self):
         '''
@@ -576,9 +585,10 @@ class LocalExporting:
 
         }
 
-        with open(os.path.join(self.rootdir, "result.json"), "w") as O:
-            O.write(json.dumps(json_data))
-
+        # testing dumps
+        # with open(os.path.join(self.rootdir, "result.json"), "w") as O:
+        #    O.write(json.dumps(json_data))
+        
         with open(os.path.join(self.jsDir, "result.js"), "w") as O:
             O.write("var alldata = '" + json.dumps(json_data) + "';")
 
