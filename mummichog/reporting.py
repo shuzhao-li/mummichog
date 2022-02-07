@@ -373,6 +373,9 @@ class LocalExporting:
 
         with open(os.path.join(self.tabledir, "userInput_to_EmpiricalCompounds.tsv"), 'w') as O:
             O.write(s)
+
+        with open(os.path.join(self.tabledir, 'exported_Compounds.json'), 'w', encoding='utf-8') as f:
+            json.dump(self.model.Compounds, f, ensure_ascii=False, indent=2)
     
     # export functions for pathway analysis
     def export_pathway_enrichtest(self):

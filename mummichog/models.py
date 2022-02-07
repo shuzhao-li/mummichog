@@ -120,10 +120,6 @@ def json_convert_azmuth_mummichog(jmodel):
     new['metabolic_pathways'] = metabolic_pathways
     new['cpd2pathways'] = cpd2pathways
 
-
-    with open('exported_Compounds.json', 'w', encoding='utf-8') as f:
-        json.dump(new['Compounds'], f, ensure_ascii=False, indent=2)
-
     return new
 
 
