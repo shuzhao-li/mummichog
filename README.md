@@ -31,6 +31,19 @@ One can also run mummichog without installing it. Direct python call on a downlo
     python3 -m mummichog.main -f mummichog/tests/testdata0710.txt -o t2
 
 
+Use custom metabolic model
+--------------------------
+
+The `-n` argument now (v2.6) takes user specified metabolic model in JSON format, e.g.
+
+    python3 -m mummichog.main -n mummichog/tests/metabolicModel_RECON3D_20210510.json -f mummichog/tests/testdata0710.txt -o t3
+
+The porting of metabolic model is demonstrated 
+`here <https://github.com/shuzhao-li/Azimuth/blob/master/docs/From-GEM-to-metDataModel-20210510.ipynb>`
+
+Please note that identifier conversion is a major issue in genome scale models. Users benefit greatly from including chemical formula (neutral_formula) and molecular weight (neutral_mono_mass) in the model.
+
+
 History
 -------
 

@@ -10,9 +10,7 @@
 '''
 Data input functions in mummichog
 Overall design changed in v2: separating user input from theoretical model.
-
 @author: Shuzhao Li
-
 '''
 import time
 import getopt
@@ -53,14 +51,11 @@ def cli_options(opts):
     
     optdict = {
                'cutoff': 0,
-               
                'network': 'human_mfn',
                'modeling': None,
-               
                'mode': 'pos_default',
                'instrument': 'unspecified',
                'force_primary_ion': True,
-               
                'workdir': '',
                'input': '',
                'reference': '',
@@ -102,7 +97,6 @@ def cli_options(opts):
     return optdict
 
 
-
 def dispatcher():
     '''
     Dispatch command line arguments to corresponding functions.
@@ -120,7 +114,7 @@ def dispatcher():
               m/z, retention time, p-value, statistic score
         
         -n, --network: network model to use (default human_mfn; models being ported to version 2), 
-              [human_mfn, worm]
+              [human_mfn, worm, or user supplied file in JSON]
         
         -o, --output: output file identification string (default 'mcgresult')
         -k, --workdir: directory for all data files.
@@ -261,14 +255,8 @@ class EmpiricalCompound:
         '''
         test if EmpCpds has any of primary_ions as defined in config.py, 
         ['M+H[1+]', 'M+Na[1+]', 'M-H2O+H[1+]', 'M-H[-]', 'M-2H[2-]', 'M-H2O-H[-]']
-        
         evidence_score is combining weight scores from multiple adducts.
-        
-        No need to separate ionMode upfront ("positive", "negative")
-        Bad ones should not be used for downstream analysis...
-        
         '''
-        
         if set(self.ions.keys()).intersection(primary_ions):
             self.primary_ion_present = True
         
@@ -299,7 +287,6 @@ class EmpiricalCompound:
 
 class InputUserData:
     '''
-    
     backward compatibility, 1 or 2-file input formats
     Per Joshua C., there'd be an option to test user designated L_sig, but user specified IDs are required
     
@@ -569,9 +556,7 @@ class DataMeetModel:
         >>> len(metabolicModels['human_model_mfn']['Compounds'])
         3560
         '''
-
         IonCpdTree = []
-        
         for ii in range(MASS_RANGE[1]+1): 
             IonCpdTree.append([])       #empty lists for anything below MASS_RANGE
             
@@ -604,8 +589,6 @@ class DataMeetModel:
             * Compounds to mzFeatures
         Then, 
             * EmpiricalCompounds are determined within Compound matched mzFeatures, considering retention time.
-        
-        
         '''
         self.__match_to_mzFeatures__()
         self.cpd2mzFeatures = self.index_Compounds_to_mzFeatures()

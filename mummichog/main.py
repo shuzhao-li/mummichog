@@ -42,12 +42,27 @@ def main():
     #specify which metabolic model 
     if userData.paradict['network'] in ['human', 'hsa', 'Human', 'human_mfn', 'hsa_mfn', '']:
         theoreticalModel = metabolicNetwork(metabolicModels[ 'human_model_mfn' ])
+
     elif userData.paradict['network'] in ['worm', 'C. elegans', 'icel1273', 'Caenorhabditis elegans']:
         theoreticalModel = metabolicNetwork(metabolicModels[ 'worm_model_icel1273' ])
-        
+    #
+    # get user specified model
+    #
     else:
-        raise KeyError( "Unsupported species/model. Pls contact author." )
+        try:
+            theoreticalModel = metabolicNetwork(
+                # get user input JSON model and convert to mummichog format
+                read_user_json_model(userData.paradict['network'])
+            )      
+        except FileNotFoundError:
+            raise FileNotFoundError( "Not being able to find ", userData.paradict['network'] )
+        finally:
+            print("Support of custom metabolic models is in progress. Pls contact author.")
     
+    # calculating isotopes/adducts, to test, print(list(theoreticalModel.Compounds.items())[64: 70])
+    theoreticalModel.update_Compounds_adducts(mode=userData.paradict['mode'])
+
+    # matching model data with user data
     mixedNetwork = DataMeetModel(theoreticalModel, userData)
 
     # getting a list of Pathway instances, with p-values, in PA.resultListOfPathways
