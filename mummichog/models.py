@@ -269,7 +269,7 @@ class Mmodule:
         self.network = network
         self.num_ref_edges = self.network.number_of_edges()
         self.num_ref_nodes = self.network.number_of_nodes()
-        self.graph = subgraph
+        self.graph = subgraph.copy()
         
         seed_cpds = [x[2] for x in TrioList]
         self.shave(seed_cpds)
@@ -346,7 +346,8 @@ class Mmodule:
         nonseeds = [x for x in self.graph.nodes() if x not in seed_cpds]
         excessive = [x for x in nonseeds if self.graph.degree(x)==1]
         while excessive:
-            for x in excessive: self.graph.remove_node(x)
+            for x in excessive: 
+                self.graph.remove_node(x)
             nonseeds = [x for x in self.graph.nodes() if x not in seed_cpds]
             excessive = [x for x in nonseeds if self.graph.degree(x)==1]
 
@@ -355,7 +356,7 @@ class Mmodule:
         '''
         create an identifier using nodes in sorted order
         '''
-        Nodes = self.graph.nodes()
+        Nodes = list(self.graph.nodes)
         Nodes.sort()
         return ''.join(Nodes)
 

@@ -11,13 +11,18 @@ Modified to add fielding numpy.linalg.linalg.linAlgError, Shuzhao Li, 2017-05-15
 Modified to fit Python 3, 2020-02-12
 """
 
+
+#
+# Deprecated; too many changes btw networkx v1 and v2. Use nx_modularity instead
+#
+
 USE_TEST_MODE = False
 
+import networkx as nx
 from numpy import *
 
 if USE_TEST_MODE:
     import re, itertools
-    import networkx as nx
     from scipy.cluster import hierarchy
 
 
@@ -219,20 +224,24 @@ class network:
         Make adjacency matrix from nodes and edges.
         Edges are treated as not directional, thus matrix is symmetrical.
         Multiple edges between two nodes are allowed.
-        """
+        
         am = zeros( (self.num_nodes, self.num_nodes) )
         for edge in self.edges:
             am[self.nodes.index(edge[0]), self.nodes.index(edge[1])] += 1
             # take out the next line will make a directional network
             am[self.nodes.index(edge[1]), self.nodes.index(edge[0])] += 1
         self.adjacency_matrix = am
+        
+        """
+        self.adjacency_matrix = nx.adjacency_matrix(self)
 
     def make_node_index(self):
         """
         mapping node name/id to original index
         """
+        nodes = list(self.nodes)
         for ii in range(self.num_nodes):
-            self.crd[self.nodes[ii]] = ii
+            self.crd[ nodes[ii] ] = ii
 
     #
     # The read_gml functions read network from GML format.

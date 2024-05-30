@@ -15,7 +15,7 @@ To move adduct calculation out to azimuth-metabolomics.
 
 '''
 
-VERSION = '2.6.1'          # Python 3 only
+VERSION = '2.7.0'          # Python 3 only
 RELEASE = True
 USE_DEBUG = False
 

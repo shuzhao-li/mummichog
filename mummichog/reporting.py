@@ -81,7 +81,7 @@ class WebReporting:
         
         
         vis_nodes = []
-        for g in self.web_export_networks: vis_nodes += g.nodes()
+        for g in self.web_export_networks: vis_nodes += list(g.nodes)
         self.vis_nodes = set(vis_nodes)
 
 
@@ -215,7 +215,7 @@ class WebReporting:
         s, counter = '', 0
         for M in self.MA.top_modules:
             counter += 1
-            nodes = M.graph.nodes()
+            nodes = list(M.graph.nodes)
             names = [self.model.dict_cpds_def.get(x, '') for x in nodes]
             s += '<div class="moduleline">' + 'module_' + str(counter) + ", p=" + str(round(M.p_value, 5)) + ", " + str(len(nodes)) + " metabolites" + '</div>'
             s += '<div class="metabolites">' + ', '.join(names) + '</div>'
@@ -414,7 +414,7 @@ class LocalExporting:
                       'This module overlaps with'], ]
         
         for M in self.MA.top_modules:
-            nodes = M.graph.nodes()
+            nodes = list(M.graph.nodes)
             names = [self.model.dict_cpds_def.get(x, '') for x in nodes]
             resultstr.append([M.id, str(M.p_value),
                               str(len(nodes)), '$'.join(names),
@@ -580,7 +580,7 @@ class LocalExporting:
                 {
                     'id': M.id,
                     'p_value': M.p_value,
-                    'members': M.graph.nodes(), # This is on theoretical metabolites/compounds
+                    'members': list(M.graph.nodes), # This is on theoretical metabolites/compounds
                     #'size' is number of members
                     # Common names of members can be looked up, from metabolic model/metabolite definition
                 } for M in self.MA.top_modules

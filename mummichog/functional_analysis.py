@@ -25,7 +25,7 @@ import random
 import itertools
 
 from scipy import stats
-import mummichog.ng_modularity as NGM
+import mummichog.nx_modularity as NGM
 
 from .get_user_data import *
 
@@ -439,7 +439,9 @@ class ModularAnalysis:
                 new_network = nx.from_edgelist(edges)
                 seeds = new_network.nodes()
             
-            for sub in nx.connected_component_subgraphs(new_network):
+            # for sub in nx.connected_component_subgraphs(new_network):
+            for sub in nx.connected_components(new_network):
+                sub = new_network.subgraph(sub).copy()
                 if 3 < sub.number_of_nodes() < MODULE_SIZE_LIMIT:
                     M = Mmodule(self.network, sub, TrioList)
                     modules.append(M)
@@ -481,19 +483,28 @@ class ModularAnalysis:
         by Newman's spectral split method
         Only modules more than 3 nodes are considered as good small modules 
         should have been generated in 1st connecting step.
-        '''
+        
         net = NGM.network()
         net.copy_from_graph(g)
         return [nx.subgraph(g, x) for x in net.specsplit() if len(x) > 3]
+    
+        '''
+        return [nx.subgraph(g, x) for x in NGM.find_communities(g) if len(x) > 3]
+    
+
+    
 
     # test alternative algorithm
     def __split_modules_nemo__(self, g):
         '''
         Alternative function using NeMo algorithm for module finding.
+        
         Not used for now.
-        '''
+        
         net = NGM.nemo_network(g)
         return [nx.subgraph(g, x) for x in net.find_modules() if len(x) > 3]
+        '''
+        pass
 
 
     def rank_significance(self):
@@ -655,8 +666,14 @@ class ActivityNetwork:
     def __get_largest_subgraph__(self, an):
         '''
         connected_component_subgraphs likely to return sorted subgraphs. Just to be sure here.
+        
+                    for sub in nx.connected_components(new_network):
+                sub = new_network.subgraph(sub).copy()
+                
         '''
-        return max(nx.connected_component_subgraphs(an), key=len)
+        return max(
+            [an.subgraph(c).copy() for c in nx.connected_components(an)], key=len
+            )
         
     def __get_ave_connections__(self, N):
         '''

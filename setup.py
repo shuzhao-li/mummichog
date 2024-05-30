@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setup(
   name='mummichog',
-  version='2.6.1',
+  version='2.7.0',
 
   author='Shuzhao Li, Francisco Castellanos, Andrei Todor',
   author_email='shuzhao.li@gmail.com',
@@ -42,7 +42,7 @@ setup(
   python_requires='>=3.4',
   install_requires=[
     'matplotlib',
-    'networkx>=1,<2',
+    'networkx>=2',
     'numpy',
     'scipy',
     'xlsxwriter',
